@@ -1,0 +1,224 @@
+{
+  "regions": [
+    {
+      "region_id": "PUNE",
+      "name": "Pune District",
+      "latitude": 18.5204,
+      "longitude": 73.8567,
+      "elevation": 560,
+      "climate_zone": "Semi-Arid",
+      "typical_soil_types": [
+        "Clay-Loam",
+        "Sandy-Loam"
+      ],
+      "supported_seasons": [
+        "Kharif",
+        "Rabi"
+      ],
+      "default_soil": {
+        "texture": "Clay-Loam",
+        "ph": 7.2,
+        "organic_matter": "Medium",
+        "drainage": "Medium"
+      }
+    },
+    {
+      "region_id": "SOLAPUR",
+      "name": "Solapur District",
+      "latitude": 17.6599,
+      "longitude": 75.9064,
+      "elevation": 458,
+      "climate_zone": "Semi-Arid",
+      "typical_soil_types": [
+        "Clay",
+        "Sandy"
+      ],
+      "supported_seasons": [
+        "Kharif",
+        "Rabi"
+      ],
+      "default_soil": {
+        "texture": "Clay",
+        "ph": 7.8,
+        "organic_matter": "Low",
+        "drainage": "Poor"
+      }
+    },
+    {
+      "region_id": "NASHIK",
+      "name": "Nashik District",
+      "latitude": 19.9975,
+      "longitude": 73.7898,
+      "elevation": 565,
+      "climate_zone": "Sub-Humid",
+      "typical_soil_types": [
+        "Clay-Loam",
+        "Loam"
+      ],
+      "supported_seasons": [
+        "Kharif",
+        "Rabi"
+      ],
+      "default_soil": {
+        "texture": "Loam",
+        "ph": 6.8,
+        "organic_matter": "Medium",
+        "drainage": "Good"
+      }
+    },
+    {
+      "region_id": "AHMEDNAGAR",
+      "name": "Ahmednagar District",
+      "latitude": 19.0948,
+      "longitude": 74.748,
+      "elevation": 649,
+      "climate_zone": "Semi-Arid",
+      "typical_soil_types": [
+        "Clay",
+        "Clay-Loam"
+      ],
+      "supported_seasons": [
+        "Kharif",
+        "Rabi"
+      ],
+      "default_soil": {
+        "texture": "Clay-Loam",
+        "ph": 7.5,
+        "organic_matter": "Medium",
+        "drainage": "Medium"
+      }
+    },
+    {
+      "region_id": "AURANGABAD",
+      "name": "Aurangabad District",
+      "latitude": 19.8762,
+      "longitude": 75.3433,
+      "elevation": 568,
+      "climate_zone": "Semi-Arid",
+      "typical_soil_types": [
+        "Clay",
+        "Sandy-Loam"
+      ],
+      "supported_seasons": [
+        "Kharif",
+        "Rabi"
+      ],
+      "default_soil": {
+        "texture": "Clay",
+        "ph": 7.6,
+        "organic_matter": "Low",
+        "drainage": "Medium"
+      }
+    },
+    {
+      "region_id": "JALGAON",
+      "name": "Jalgaon District",
+      "latitude": 21.0077,
+      "longitude": 75.5626,
+      "elevation": 209,
+      "climate_zone": "Sub-Humid",
+      "typical_soil_types": [
+        "Clay-Loam",
+        "Loam"
+      ],
+      "supported_seasons": [
+        "Kharif",
+        "Rabi"
+      ],
+      "default_soil": {
+        "texture": "Clay-Loam",
+        "ph": 7.0,
+        "organic_matter": "Medium",
+        "drainage": "Good"
+      }
+    },
+    {
+      "region_id": "SANGLI",
+      "name": "Sangli District",
+      "latitude": 16.8524,
+      "longitude": 74.5815,
+      "elevation": 549,
+      "climate_zone": "Semi-Arid",
+      "typical_soil_types": [
+        "Clay",
+        "Sandy"
+      ],
+      "supported_seasons": [
+        "Kharif",
+        "Rabi"
+      ],
+      "default_soil": {
+        "texture": "Sandy",
+        "ph": 7.4,
+        "organic_matter": "Low",
+        "drainage": "Good"
+      }
+    },
+    {
+      "region_id": "KOLHAPUR",
+      "name": "Kolhapur District",
+      "latitude": 16.705,
+      "longitude": 74.2433,
+      "elevation": 569,
+      "climate_zone": "Sub-Humid",
+      "typical_soil_types": [
+        "Clay-Loam",
+        "Loam"
+      ],
+      "supported_seasons": [
+        "Kharif",
+        "Rabi"
+      ],
+      "default_soil": {
+        "texture": "Loam",
+        "ph": 6.5,
+        "organic_matter": "High",
+        "drainage": "Good"
+      }
+    },
+    {
+      "region_id": "SATARA",
+      "name": "Satara District",
+      "latitude": 17.6805,
+      "longitude": 74.0183,
+      "elevation": 625,
+      "climate_zone": "Sub-Humid",
+      "typical_soil_types": [
+        "Clay-Loam",
+        "Sandy-Loam"
+      ],
+      "supported_seasons": [
+        "Kharif",
+        "Rabi"
+      ],
+      "default_soil": {
+        "texture": "Sandy-Loam",
+        "ph": 6.8,
+        "organic_matter": "Medium",
+        "drainage": "Good"
+      }
+    },
+    {
+      "region_id": "LATUR",
+      "name": "Latur District",
+      "latitude": 18.3983,
+      "longitude": 76.5604,
+      "elevation": 636,
+      "climate_zone": "Semi-Arid",
+      "typical_soil_types": [
+        "Clay",
+        "Sandy"
+      ],
+      "supported_seasons": [
+        "Kharif",
+        "Rabi"
+      ],
+      "default_soil": {
+        "texture": "Clay",
+        "ph": 7.9,
+        "organic_matter": "Low",
+        "drainage": "Poor"
+      }
+    }
+  ]
+}

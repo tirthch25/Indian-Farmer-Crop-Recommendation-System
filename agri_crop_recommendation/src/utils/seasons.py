@@ -1,0 +1,224 @@
+"""
+Season Detection for Indian Agriculture
+
+Determines agricultural seasons (Kharif, Rabi, Zaid) based on date and region.
+Uses region-specific seasonal calendars for accurate season detection.
+"""
+
+from datetime import datetime
+from typing import Optional, Tuple
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+# Season definitions for Indian agriculture
+# Kharif: Monsoon season (June-October)
+# Rabi: Winter season (October-March)
+# Zaid: Summer season (March-June)
+
+SEASON_CALENDAR = {
+    # Format: (start_month, start_day, end_month, end_day)
+    "Kharif": (6, 1, 10, 31),    # June 1 - October 31
+    "Rabi": (11, 1, 3, 31),       # November 1 - March 31
+    "Zaid": (3, 1, 6, 30)         # March 1 - June 30 (overlaps with Rabi end)
+}
+
+
+def detect_season(date: datetime, region_id: Optional[str] = None) -> str:
+    """
+    Detect the current agricultural season based on date.
+    
+    Args:
+        date: Date to check
+        region_id: Optional region identifier for region-specific calendars
+        
+    Returns:
+        Season name: "Kharif", "Rabi", or "Zaid"
+    """
+    month = date.month
+    day = date.day
+    
+    # Kharif season: June 1 - October 31
+    if (month == 6 and day >= 1) or (6 < month < 10) or (month == 10 and day <= 31):
+        return "Kharif"
+    
+    # Rabi season: November 1 - March 31
+    elif (month == 11 and day >= 1) or (month == 12) or (month <= 2) or (month == 3 and day <= 31):
+        return "Rabi"
+    
+    # Zaid season: April 1 - May 31 (between Rabi and Kharif)
+    elif month in [4, 5]:
+        return "Zaid"
+    
+    # Default to Kharif for edge cases
+    else:
+        logger.warning(f"Unexpected date {date}, defaulting to Kharif")
+        return "Kharif"
+
+
+def is_season_transition(date: datetime, days_threshold: int = 30) -> Tuple[bool, Optional[str]]:
+    """
+    Check if date is within a season transition period.
+    
+    Args:
+        date: Date to check
+        days_threshold: Number of days before season end to consider transition
+        
+    Returns:
+        Tuple of (is_transition, next_season)
+    """
+    current_season = detect_season(date)
+    
+    # Calculate days until season end
+    month = date.month
+    day = date.day
+    
+    # Check if within threshold days of season end
+    if current_season == "Kharif":
+        # Kharif ends October 31
+        if month == 10 and day >= (31 - days_threshold):
+            return True, "Rabi"
+    elif current_season == "Rabi":
+        # Rabi ends March 31
+        if month == 3 and day >= (31 - days_threshold):
+            return True, "Zaid"
+    elif current_season == "Zaid":
+        # Zaid ends May 31
+        if month == 5 and day >= (31 - days_threshold):
+            return True, "Kharif"
+    
+    return False, None
+
+
+def get_season_info(season: str) -> dict:
+    """
+    Get information about a season.
+    
+    Args:
+        season: Season name
+        
+    Returns:
+        Dictionary with season information
+    """
+    season_descriptions = {
+        "Kharif": {
+            "name": "Kharif",
+            "description": "Monsoon season crops (June-October)",
+            "typical_crops": ["Bajra", "Jowar", "Rice", "Maize", "Cotton", "Soybean"],
+            "water_source": "Primarily monsoon rainfall",
+            "characteristics": "High rainfall, warm temperatures, humid conditions"
+        },
+        "Rabi": {
+            "name": "Rabi",
+            "description": "Winter season crops (November-March)",
+            "typical_crops": ["Wheat", "Chickpea", "Mustard", "Barley", "Peas"],
+            "water_source": "Irrigation and residual soil moisture",
+            "characteristics": "Cool temperatures, low rainfall, requires irrigation"
+        },
+        "Zaid": {
+            "name": "Zaid",
+            "description": "Summer season crops (March-June)",
+            "typical_crops": ["Watermelon", "Cucumber", "Muskmelon", "Vegetables"],
+            "water_source": "Primarily irrigation",
+            "characteristics": "Hot temperatures, dry conditions, high water requirement"
+        }
+    }
+    
+    return season_descriptions.get(season, {})
+
+
+def get_season_water_adjustment(season: str, base_requirement: float) -> float:
+    """
+    Adjust water requirements based on season.
+    
+    Kharif crops benefit from monsoon rainfall.
+    Rabi crops may have residual soil moisture.
+    Zaid crops need full irrigation.
+    
+    Args:
+        season: Season name
+        base_requirement: Base water requirement in mm
+        
+    Returns:
+        Adjusted water requirement
+    """
+    adjustments = {
+        "Kharif": 0.85,   # 15% reduction due to monsoon
+        "Rabi": 0.95,     # 5% reduction due to residual moisture
+        "Zaid": 1.10      # 10% increase due to high evaporation
+    }
+    
+    multiplier = adjustments.get(season, 1.0)
+    adjusted = base_requirement * multiplier
+    
+    logger.debug(
+        f"Water adjustment for {season}: {base_requirement}mm -> {adjusted}mm "
+        f"(multiplier: {multiplier})"
+    )
+    
+    return adjusted
+
+
+def get_planting_window(season: str, region_id: Optional[str] = None) -> dict:
+    """
+    Get optimal planting window for a season.
+    
+    Args:
+        season: Season name
+        region_id: Optional region identifier
+        
+    Returns:
+        Dictionary with planting window information
+    """
+    windows = {
+        "Kharif": {
+            "start_month": 6,
+            "start_day": 1,
+            "end_month": 7,
+            "end_day": 15,
+            "description": "Plant with onset of monsoon (early June to mid-July)"
+        },
+        "Rabi": {
+            "start_month": 10,
+            "start_day": 15,
+            "end_month": 11,
+            "end_day": 30,
+            "description": "Plant after monsoon withdrawal (mid-October to November)"
+        },
+        "Zaid": {
+            "start_month": 3,
+            "start_day": 1,
+            "end_month": 4,
+            "end_day": 15,
+            "description": "Plant in early summer (March to mid-April)"
+        }
+    }
+    
+    return windows.get(season, {})
+
+
+def format_season_guidance(current_season: str, is_transition: bool, next_season: Optional[str]) -> str:
+    """
+    Format season guidance message for farmers.
+    
+    Args:
+        current_season: Current season
+        is_transition: Whether in transition period
+        next_season: Next season if in transition
+        
+    Returns:
+        Formatted guidance message
+    """
+    if is_transition and next_season:
+        return (
+            f"Currently in late {current_season} season, transitioning to {next_season}. "
+            f"Consider crops suitable for both seasons or early {next_season} varieties."
+        )
+    else:
+        season_info = get_season_info(current_season)
+        return (
+            f"Current season: {current_season}. "
+            f"{season_info.get('description', '')}. "
+            f"Optimal for: {', '.join(season_info.get('typical_crops', [])[:3])}."
+        )
