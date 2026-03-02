@@ -1,210 +1,232 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>किसान फसल सिफारिश प्रणाली / Farmer Crop Recommendation System</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
+    <title>Indian Farmer Crop Recommendation System</title>
+    <meta name="description"
+        content="ML-powered crop recommendation system for Indian farmers with weather forecasting, risk assessment, and planting calendar.">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌾</text></svg>">
     <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
+
 <body>
     <!-- Header -->
-    <header class="header">
+    <header class="header" id="header">
         <div class="header-content">
-            <div class="header-icon">🌾</div>
-            <div>
-                <h1>किसान फसल सिफारिश प्रणाली</h1>
-                <h1>Farmer Crop Recommendation System</h1>
-                <p>भारत के सभी क्षेत्रों के लिए वैज्ञानिक फसल सिफारिशें / Scientific Crop Recommendations for All Regions of India</p>
+            <div class="header-left">
+                <div class="logo">🌾</div>
+                <div>
+                    <h1>Crop Recommendation System</h1>
+                    <p class="header-subtitle">AI-Powered Agricultural Advisory for Indian Farmers</p>
+                </div>
             </div>
+
         </div>
     </header>
 
-    <!-- Main Container -->
-    <div class="container">
-        <!-- Info Banner -->
-        <div class="info-banner">
-            <h2>🎯 यह प्रणाली कैसे काम करती है / How This System Works</h2>
-            <p>
-                यह प्रणाली मौसम डेटा, मिट्टी की जानकारी, और ऐतिहासिक पैटर्न का उपयोग करके आपके क्षेत्र के लिए सबसे उपयुक्त फसलों की सिफारिश करती है।
-                <br>
-                This system uses weather data, soil information, and historical patterns to recommend the most suitable crops for your region.
-            </p>
-        </div>
-
-        <!-- Form Card -->
-        <div class="form-card">
-            <h2>📝 अपनी जानकारी दर्ज करें / Enter Your Information</h2>
-            
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Input Form Card -->
+        <section class="card form-card" id="input-section">
+            <div class="card-header">
+                <h2>📝 Enter Your Farm Details</h2>
+                <p class="card-subtitle">Select your region, soil, and irrigation to get personalized recommendations
+                </p>
+            </div>
             <form id="recommendationForm">
-                <!-- Basic Information -->
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="region">
-                            📍 आपका जिला / Your District *
-                        </label>
-                        <select id="region" required>
-                            <option value="">लोड हो रहा है... / Loading...</option>
+                        <label for="state">🗺️ State</label>
+                        <select id="state" required>
+                            <option value="">Loading states...</option>
                         </select>
-                        <small>अपना जिला चुनें / Select your district</small>
                     </div>
-
                     <div class="form-group">
-                        <label for="irrigation">
-                            💧 सिंचाई सुविधा / Irrigation Facility *
-                        </label>
+                        <label for="region">📍 District</label>
+                        <select id="region" required disabled>
+                            <option value="">Select a state first...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="irrigation">💧 Irrigation Available</label>
                         <select id="irrigation" required>
-                            <option value="None">नहीं / None</option>
-                            <option value="Limited" selected>सीमित / Limited</option>
-                            <option value="Full">पूर्ण / Full</option>
+                            <option value="None">None</option>
+                            <option value="Limited" selected>Limited</option>
+                            <option value="Full">Full</option>
                         </select>
-                        <small>आपकी सिंचाई क्षमता / Your irrigation capacity</small>
                     </div>
-
                     <div class="form-group">
-                        <label for="planning_days">
-                            ⏱️ योजना अवधि / Planning Period *
-                        </label>
-                        <input type="number" id="planning_days" value="90" min="70" max="120" required>
-                        <small>70-120 दिन / days</small>
+                        <label for="planning_days">⏱️ Planning Period (days)</label>
+                        <input type="number" id="planning_days" value="90" min="15" max="365" required>
                     </div>
                 </div>
 
-                <!-- Soil Information (Optional) -->
-                <h3 style="margin: 1.5rem 0 1rem; color: var(--primary-green);">
-                    🌱 मिट्टी की जानकारी (वैकल्पिक) / Soil Information (Optional)
-                </h3>
-                
+                <!-- Soil Information -->
+                <div class="section-divider">
+                    <span>🌱 Soil Information (Optional)</span>
+                </div>
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="soil_texture">
-                            मिट्टी का प्रकार / Soil Texture
-                        </label>
+                        <label for="soil_texture">Soil Type</label>
                         <select id="soil_texture">
-                            <option value="">डिफ़ॉल्ट उपयोग करें / Use Default</option>
-                            <option value="Clay">चिकनी मिट्टी / Clay</option>
-                            <option value="Loam">दोमट / Loam</option>
-                            <option value="Sandy">रेतीली / Sandy</option>
-                            <option value="Clay-Loam">चिकनी-दोमट / Clay-Loam</option>
-                            <option value="Sandy-Loam">रेतीली-दोमट / Sandy-Loam</option>
+                            <option value="">Use Region Default</option>
+                            <option value="Clay">Clay</option>
+                            <option value="Loam">Loam</option>
+                            <option value="Sandy">Sandy</option>
+                            <option value="Clay-Loam">Clay-Loam</option>
+                            <option value="Sandy-Loam">Sandy-Loam</option>
                         </select>
                     </div>
-
                     <div class="form-group">
-                        <label for="soil_ph">
-                            मिट्टी pH
-                        </label>
+                        <label for="soil_ph">Soil pH</label>
                         <input type="number" id="soil_ph" step="0.1" min="4" max="9" placeholder="6.0 - 8.0">
-                        <small>सामान्य: 6.0-8.0 / Normal: 6.0-8.0</small>
                     </div>
-
                     <div class="form-group">
-                        <label for="soil_organic">
-                            जैविक पदार्थ / Organic Matter
-                        </label>
+                        <label for="soil_organic">Organic Matter</label>
                         <select id="soil_organic">
-                            <option value="Low">कम / Low</option>
-                            <option value="Medium" selected>मध्यम / Medium</option>
-                            <option value="High">उच्च / High</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
                         </select>
                     </div>
-
                     <div class="form-group">
-                        <label for="soil_drainage">
-                            जल निकासी / Drainage
-                        </label>
+                        <label for="soil_drainage">Drainage</label>
                         <select id="soil_drainage">
-                            <option value="Poor">खराब / Poor</option>
-                            <option value="Medium" selected>मध्यम / Medium</option>
-                            <option value="Good">अच्छा / Good</option>
+                            <option value="Poor">Poor</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="Good">Good</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- Submit Button -->
-                <button type="submit" class="btn btn-primary">
-                    🔍 फसल सिफारिशें प्राप्त करें / Get Crop Recommendations
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    🔍 Get Crop Recommendations
                 </button>
             </form>
-        </div>
+        </section>
 
-        <!-- Loading Spinner -->
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>सिफारिशें तैयार की जा रही हैं... / Generating recommendations...</p>
-        </div>
-
-        <!-- Results Section -->
-        <div id="results" class="results">
-            <!-- Results Header -->
-            <div class="results-header">
-                <h2>✅ आपके लिए सिफारिशें / Recommendations for You</h2>
-                
-                <div class="results-info">
-                    <div class="info-item">
-                        <strong>📍 क्षेत्र / Region</strong>
-                        <span id="result-region">-</span>
-                    </div>
-                    <div class="info-item">
-                        <strong>🌾 मौसम / Season</strong>
-                        <span id="result-season">-</span>
-                    </div>
-                    <div class="info-item">
-                        <strong>🌡️ जलवायु / Climate</strong>
-                        <span id="result-climate">-</span>
-                    </div>
-                    <div class="info-item">
-                        <strong>🌱 मिट्टी / Soil</strong>
-                        <span id="result-soil">-</span>
-                    </div>
-                    <div class="info-item">
-                        <strong>💧 सिंचाई / Irrigation</strong>
-                        <span id="result-irrigation">-</span>
-                    </div>
-                    <div class="info-item">
-                        <strong>🌡️ अपेक्षित तापमान / Expected Temp</strong>
-                        <span id="result-forecast-temp">-</span>
-                    </div>
-                    <div class="info-item">
-                        <strong>🌧️ अपेक्षित बारिश / Expected Rain</strong>
-                        <span id="result-forecast-rain">-</span>
-                    </div>
-                </div>
-
-                <div style="margin-top: 1rem; padding: 1rem; background: #e8f5e9; border-radius: 8px;">
-                    <strong>ℹ️ मौसम मार्गदर्शन / Season Guidance:</strong>
-                    <p id="season-guidance" style="margin-top: 0.5rem;">-</p>
-                </div>
-            </div>
-
-            <!-- Crops Grid -->
-            <h2 style="color: var(--primary-green); margin-bottom: 1rem;">
-                🏆 शीर्ष अनुशंसित फसलें / Top Recommended Crops
-            </h2>
-            <div id="cropsGrid" class="crops-grid">
-                <!-- Crop cards will be inserted here -->
+        <!-- Loading -->
+        <div id="loading" class="loading hidden">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p>Analyzing weather, soil, and ML models...</p>
+                <p class="loading-sub">Running LSTM + XGBoost ensemble forecast</p>
             </div>
         </div>
-    </div>
+
+        <!-- Results Container -->
+        <div id="results" class="results hidden">
+
+            <!-- Overview Cards -->
+            <section class="overview-grid" id="overview">
+                <div class="stat-card" id="stat-region">
+                    <div class="stat-icon">📍</div>
+                    <div class="stat-label">Region</div>
+                    <div class="stat-value" id="result-region">-</div>
+                </div>
+                <div class="stat-card" id="stat-season">
+                    <div class="stat-icon">🌾</div>
+                    <div class="stat-label">Season</div>
+                    <div class="stat-value" id="result-season">-</div>
+                </div>
+                <div class="stat-card" id="stat-temp">
+                    <div class="stat-icon">🌡️</div>
+                    <div class="stat-label">Avg Temperature</div>
+                    <div class="stat-value" id="result-temp">-</div>
+                </div>
+                <div class="stat-card" id="stat-rain">
+                    <div class="stat-icon">🌧️</div>
+                    <div class="stat-label">Expected Rainfall</div>
+                    <div class="stat-value" id="result-rain">-</div>
+                </div>
+                <div class="stat-card" id="stat-soil">
+                    <div class="stat-icon">🌱</div>
+                    <div class="stat-label">Soil Type</div>
+                    <div class="stat-value" id="result-soil">-</div>
+                </div>
+                <div class="stat-card" id="stat-forecast">
+                    <div class="stat-icon">🤖</div>
+                    <div class="stat-label">Forecast Source</div>
+                    <div class="stat-value" id="result-forecast-src">-</div>
+                </div>
+            </section>
+
+            <!-- Season Guidance -->
+            <section class="card guidance-card" id="guidance-section">
+                <h3>ℹ️ Season Guidance</h3>
+                <p id="season-guidance">-</p>
+            </section>
+
+            <!-- Weather Forecast Chart -->
+            <section class="card" id="forecast-section">
+                <div class="card-header">
+                    <h2>📊 Weather Forecast</h2>
+                    <span class="badge badge-info" id="forecast-badge">ML Ensemble</span>
+                </div>
+                <div class="chart-container">
+                    <canvas id="weatherChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Top Recommended Crops -->
+            <section id="crops-section">
+                <div class="section-header">
+                    <h2>🏆 Top Recommended Crops</h2>
+                    <p class="section-subtitle" id="crops-count">-</p>
+                </div>
+                <div class="crops-grid" id="cropsGrid">
+                    <!-- Crop cards inserted by JS -->
+                </div>
+            </section>
+
+            <!-- Risk Assessment Panel -->
+            <section class="card" id="risk-section">
+                <div class="card-header">
+                    <h2>⚠️ Risk Assessment</h2>
+                </div>
+                <div id="riskContent">
+                    <!-- Risk content inserted by JS -->
+                </div>
+            </section>
+
+            <!-- Pest/Disease Warnings -->
+            <section class="card" id="pest-section">
+                <div class="card-header">
+                    <h2>🐛 Pest & Disease Alerts</h2>
+                </div>
+                <div id="pestContent">
+                    <!-- Pest warnings inserted by JS -->
+                </div>
+            </section>
+
+            <!-- Planting Calendar -->
+            <section class="card" id="calendar-section">
+                <div class="card-header">
+                    <h2>📅 Planting Calendar</h2>
+                </div>
+                <div id="calendarContent">
+                    <!-- Calendar inserted by JS -->
+                </div>
+            </section>
+        </div>
+    </main>
 
     <!-- Footer -->
     <footer class="footer">
-        <p>
-            🌾 किसान फसल सिफारिश प्रणाली / Farmer Crop Recommendation System
-        </p>
-        <p style="margin-top: 0.5rem; opacity: 0.8;">
-            भारत के सभी क्षेत्रों के लिए वैज्ञानिक फसल सिफारिशें
-            <br>
-            Scientific Crop Recommendations for All Regions of India
-        </p>
-        <p style="margin-top: 1rem; font-size: 0.9rem;">
-            10 क्षेत्र • 15 फसलें • 10 वर्ष का डेटा
-            <br>
-            10 Regions • 15 Crops • 10 Years of Data
-        </p>
+        <div class="footer-content">
+            <p><strong>🌾 Indian Farmer Crop Recommendation System v3.0</strong></p>
+            <p>ML-Powered: LSTM + XGBoost Weather Forecasting • Random Forest Crop Suitability</p>
+            <p class="footer-stats">640 Regions • 34 States • 15+ Crops • 10 Years Historical Data • 40,180 Records</p>
+        </div>
     </footer>
 
-    <!-- JavaScript -->
     <script src="/static/js/app.js"></script>
 </body>
+
 </html>

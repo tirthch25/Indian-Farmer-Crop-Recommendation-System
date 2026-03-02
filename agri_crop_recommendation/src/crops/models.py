@@ -1,4 +1,4 @@
-"""
+﻿"""
 Crop Data Models
 
 Comprehensive data models for crop information including temperature requirements,
@@ -7,6 +7,10 @@ water needs, soil compatibility, and regional suitability.
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Optional
+
+# SoilInfo is defined in src.crops.soil (single source of truth). Re-export here
+# for backward compatibility with any code that imports from src.crops.models.
+from src.crops.soil import SoilInfo  # noqa: F401
 
 
 @dataclass
@@ -84,6 +88,7 @@ class CropInfo:
     varieties: List[str] = field(default_factory=list)
     typical_yield_kg_per_ha: int = 0
     market_demand: str = "Moderate"
+    growing_tip: str = ""
     
     def is_suitable_for_region(self, region_id: str, threshold: float = 0.3) -> bool:
         """
@@ -172,7 +177,8 @@ class CropInfo:
             "seasons": self.seasons,
             "varieties": self.varieties,
             "typical_yield_kg_per_ha": self.typical_yield_kg_per_ha,
-            "market_demand": self.market_demand
+            "market_demand": self.market_demand,
+            "growing_tip": self.growing_tip
         }
     
     @classmethod
@@ -184,32 +190,3 @@ class CropInfo:
         return cls(**data)
 
 
-@dataclass
-class SoilInfo:
-    """
-    Soil characteristics information.
-    
-    Attributes:
-        texture: Soil texture type
-        ph: Soil pH value (0-14)
-        organic_matter: Organic matter content level
-        drainage: Drainage quality
-    """
-    texture: str  # "Clay", "Loam", "Sandy", "Clay-Loam", "Sandy-Loam"
-    ph: float
-    organic_matter: str  # "Low", "Medium", "High"
-    drainage: Optional[str] = "Medium"  # "Poor", "Medium", "Good"
-    
-    def to_dict(self) -> Dict:
-        """Convert to dictionary."""
-        return {
-            "texture": self.texture,
-            "ph": self.ph,
-            "organic_matter": self.organic_matter,
-            "drainage": self.drainage
-        }
-    
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'SoilInfo':
-        """Create SoilInfo from dictionary."""
-        return cls(**data)

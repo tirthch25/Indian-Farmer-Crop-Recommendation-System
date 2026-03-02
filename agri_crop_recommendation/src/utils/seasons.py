@@ -7,9 +7,26 @@ Uses region-specific seasonal calendars for accurate season detection.
 
 from datetime import datetime
 from typing import Optional, Tuple
+from pathlib import Path
+import json
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Load all season data from central knowledge database
+_KNOWLEDGE_PATH = Path("data/reference/crop_knowledge.json")
+_PLANTING_WINDOWS: dict = {}
+_SEASON_INFO: dict = {}
+_WATER_ADJUSTMENTS: dict = {}
+try:
+    if _KNOWLEDGE_PATH.exists():
+        with open(_KNOWLEDGE_PATH, 'r', encoding='utf-8') as _f:
+            _db = json.load(_f)
+            _PLANTING_WINDOWS    = _db.get("season_planting_windows", {})
+            _SEASON_INFO         = _db.get("season_info", {})
+            _WATER_ADJUSTMENTS   = _db.get("season_water_adjustments", {})
+except Exception as _e:
+    logger.warning(f"Could not load season data from crop_knowledge.json: {_e}")
 
 
 # Season definitions for Indian agriculture
@@ -93,109 +110,110 @@ def is_season_transition(date: datetime, days_threshold: int = 30) -> Tuple[bool
 
 def get_season_info(season: str) -> dict:
     """
-    Get information about a season.
-    
+    Get information about an agricultural season.
+
+    Data loaded from data/reference/crop_knowledge.json (season_info).
+
     Args:
-        season: Season name
-        
+        season: Season name (Kharif, Rabi, Zaid)
+
     Returns:
-        Dictionary with season information
+        Dictionary with season description, typical crops, water source, characteristics
     """
-    season_descriptions = {
+    if _SEASON_INFO and season in _SEASON_INFO:
+        return _SEASON_INFO[season]
+
+    # Fallback if crop_knowledge.json unavailable
+    _fallback = {
         "Kharif": {
-            "name": "Kharif",
-            "description": "Monsoon season crops (June-October)",
+            "name": "Kharif", "description": "Monsoon season crops (June-October)",
             "typical_crops": ["Bajra", "Jowar", "Rice", "Maize", "Cotton", "Soybean"],
             "water_source": "Primarily monsoon rainfall",
             "characteristics": "High rainfall, warm temperatures, humid conditions"
         },
         "Rabi": {
-            "name": "Rabi",
-            "description": "Winter season crops (November-March)",
+            "name": "Rabi", "description": "Winter season crops (November-March)",
             "typical_crops": ["Wheat", "Chickpea", "Mustard", "Barley", "Peas"],
             "water_source": "Irrigation and residual soil moisture",
             "characteristics": "Cool temperatures, low rainfall, requires irrigation"
         },
         "Zaid": {
-            "name": "Zaid",
-            "description": "Summer season crops (March-June)",
+            "name": "Zaid", "description": "Summer season crops (March-June)",
             "typical_crops": ["Watermelon", "Cucumber", "Muskmelon", "Vegetables"],
             "water_source": "Primarily irrigation",
             "characteristics": "Hot temperatures, dry conditions, high water requirement"
         }
     }
-    
-    return season_descriptions.get(season, {})
+    return _fallback.get(season, {})
 
 
 def get_season_water_adjustment(season: str, base_requirement: float) -> float:
     """
     Adjust water requirements based on season.
-    
-    Kharif crops benefit from monsoon rainfall.
-    Rabi crops may have residual soil moisture.
-    Zaid crops need full irrigation.
-    
+
+    Multipliers are loaded from data/reference/crop_knowledge.json
+    (season_water_adjustments).
+
     Args:
-        season: Season name
+        season: Season name (Kharif, Rabi, Zaid)
         base_requirement: Base water requirement in mm
-        
+
     Returns:
-        Adjusted water requirement
+        Adjusted water requirement in mm
     """
-    adjustments = {
-        "Kharif": 0.85,   # 15% reduction due to monsoon
-        "Rabi": 0.95,     # 5% reduction due to residual moisture
-        "Zaid": 1.10      # 10% increase due to high evaporation
-    }
-    
-    multiplier = adjustments.get(season, 1.0)
+    # Load from JSON; fallback to hardcoded defaults
+    _fallback_adjustments = {"Kharif": 0.85, "Rabi": 0.95, "Zaid": 1.10}
+    adjustments = _WATER_ADJUSTMENTS if _WATER_ADJUSTMENTS else _fallback_adjustments
+
+    # Skip the _comment key if present
+    multiplier = adjustments.get(season)
+    if not isinstance(multiplier, (int, float)):
+        multiplier = 1.0
+
     adjusted = base_requirement * multiplier
-    
+
     logger.debug(
         f"Water adjustment for {season}: {base_requirement}mm -> {adjusted}mm "
         f"(multiplier: {multiplier})"
     )
-    
     return adjusted
 
 
 def get_planting_window(season: str, region_id: Optional[str] = None) -> dict:
     """
     Get optimal planting window for a season.
-    
+
+    Data is loaded from data/reference/crop_knowledge.json (season_planting_windows),
+    which is the single source of truth.
+
     Args:
-        season: Season name
-        region_id: Optional region identifier
-        
+        season: Season name (Kharif, Rabi, Zaid)
+        region_id: Optional region identifier (reserved for future zone-specific windows)
+
     Returns:
         Dictionary with planting window information
     """
-    windows = {
-        "Kharif": {
-            "start_month": 6,
-            "start_day": 1,
-            "end_month": 7,
-            "end_day": 15,
-            "description": "Plant with onset of monsoon (early June to mid-July)"
-        },
-        "Rabi": {
-            "start_month": 10,
-            "start_day": 15,
-            "end_month": 11,
-            "end_day": 30,
-            "description": "Plant after monsoon withdrawal (mid-October to November)"
-        },
-        "Zaid": {
-            "start_month": 3,
-            "start_day": 1,
-            "end_month": 4,
-            "end_day": 15,
-            "description": "Plant in early summer (March to mid-April)"
+    if _PLANTING_WINDOWS and season in _PLANTING_WINDOWS:
+        w = _PLANTING_WINDOWS[season]
+        return {
+            "start_month": w.get("start_month"),
+            "start_day":   w.get("start_day"),
+            "end_month":   w.get("end_month"),
+            "end_day":     w.get("end_day"),
+            "label":       w.get("label", season),
+            "description": w.get("description", f"Planting window for {season} season")
         }
+
+    # Fallback if crop_knowledge.json unavailable
+    _fallback = {
+        "Kharif": {"start_month": 6, "start_day": 1,  "end_month": 7,  "end_day": 15,
+                   "description": "Plant with onset of monsoon (early June to mid-July)"},
+        "Rabi":   {"start_month": 10, "start_day": 15, "end_month": 11, "end_day": 30,
+                   "description": "Plant after monsoon withdrawal (mid-October to November)"},
+        "Zaid":   {"start_month": 3,  "start_day": 1,  "end_month": 4,  "end_day": 15,
+                   "description": "Plant in early summer (March to mid-April)"}
     }
-    
-    return windows.get(season, {})
+    return _fallback.get(season, {})
 
 
 def format_season_guidance(current_season: str, is_transition: bool, next_season: Optional[str]) -> str:

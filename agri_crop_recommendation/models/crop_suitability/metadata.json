@@ -1,0 +1,60 @@
+{
+  "feature_names": [
+    "crop_id",
+    "region_id",
+    "season",
+    "soil_texture",
+    "organic_matter",
+    "drainage",
+    "drought_tolerance",
+    "avg_temp",
+    "total_rainfall",
+    "max_dry_spell",
+    "soil_ph",
+    "crop_temp_min",
+    "crop_temp_max",
+    "crop_water_req",
+    "crop_duration",
+    "regional_suitability",
+    "irrigation"
+  ],
+  "categorical_cols": [
+    "crop_id",
+    "region_id",
+    "season",
+    "soil_texture",
+    "organic_matter",
+    "drainage",
+    "drought_tolerance"
+  ],
+  "numerical_cols": [
+    "avg_temp",
+    "total_rainfall",
+    "max_dry_spell",
+    "soil_ph",
+    "crop_temp_min",
+    "crop_temp_max",
+    "crop_water_req",
+    "crop_duration",
+    "regional_suitability"
+  ],
+  "feature_importances": [
+    0.042100964306503855,
+    0.0014798019292565116,
+    0.2753532448065166,
+    0.006620275118735961,
+    0.0007520524591576392,
+    0.0009209853245098184,
+    0.06535633934644311,
+    0.192603960189328,
+    0.2015956589565637,
+    0.07544226804070835,
+    0.04706789121784456,
+    0.011290466022554997,
+    0.023062900793457772,
+    0.03926333850419155,
+    0.009833770631175657,
+    0.005233851170153593,
+    0.0020222311828984553
+  ]
+}
