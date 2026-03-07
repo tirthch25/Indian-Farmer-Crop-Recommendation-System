@@ -57,13 +57,72 @@ def forecast_days_17_90(weather_df: pd.DataFrame, planning_days: int = 90, regio
 
 def _get_ml_forecast(weather_df: pd.DataFrame, planning_days: int, region_id: str) -> Optional[Dict]:
     """
-    ML-based forecast placeholder.
+    ML-based weather forecast using LSTM → XGBoost → None fallback chain.
 
-    LSTM/XGBoost district models were removed (district Parquet data no longer
-    available). This function is a stub for future re-implementation. The
-    climatology + historical zone blend fallback is used instead.
+    Tries LSTM first (most accurate), then XGBoost, then returns None
+    so the caller falls back to climatology-based estimation.
+
+    Both models are loaded lazily and cached in module-level variables.
+    Failures are caught gracefully so the app never crashes due to missing models.
     """
+    # ── Try LSTM ──────────────────────────────────────────────────────────────
+    lstm_model = _load_lstm_model()
+    if lstm_model is not None:
+        try:
+            result = lstm_model.predict(weather_df, district_id=region_id,
+                                        horizon=min(7, planning_days))
+            logger.info(f"LSTM forecast obtained for {region_id}")
+            return result
+        except Exception as e:
+            logger.warning(f"LSTM forecast failed for {region_id}: {e}")
+
+    # ── Try XGBoost ───────────────────────────────────────────────────────────
+    xgb_model = _load_xgboost_model()
+    if xgb_model is not None:
+        try:
+            result = xgb_model.predict(weather_df, district_id=region_id,
+                                       horizon=min(7, planning_days))
+            logger.info(f"XGBoost forecast obtained for {region_id}")
+            return result
+        except Exception as e:
+            logger.warning(f"XGBoost forecast failed for {region_id}: {e}")
+
     return None
+
+
+# ── Lazy model loaders (module-level cache) ───────────────────────────────────
+_lstm_model_cache   = None
+_xgboost_model_cache = None
+
+
+def _load_lstm_model():
+    """Load and cache the LSTM weather model. Returns None if not available."""
+    global _lstm_model_cache
+    if _lstm_model_cache is not None:
+        return _lstm_model_cache
+    try:
+        from src.ml.lstm_weather import LSTMWeatherForecaster
+        _lstm_model_cache = LSTMWeatherForecaster.load()
+        logger.info("LSTM weather model loaded successfully.")
+        return _lstm_model_cache
+    except Exception as e:
+        logger.debug(f"LSTM model not available: {e}")
+        return None
+
+
+def _load_xgboost_model():
+    """Load and cache the XGBoost weather model. Returns None if not available."""
+    global _xgboost_model_cache
+    if _xgboost_model_cache is not None:
+        return _xgboost_model_cache
+    try:
+        from src.ml.xgboost_weather import XGBoostWeatherForecaster
+        _xgboost_model_cache = XGBoostWeatherForecaster.load()
+        logger.info("XGBoost weather model loaded successfully.")
+        return _xgboost_model_cache
+    except Exception as e:
+        logger.debug(f"XGBoost model not available: {e}")
+        return None
 
 
 

@@ -336,43 +336,96 @@ class CropTrainingDataGenerator:
     def generate_training_data(
         self,
         num_weather_scenarios: int = 50,
-        random_seed: int = 42
+        random_seed: int = 42,
+        output_path: str = None,
+        chunk_size: int = 50_000,
     ) -> pd.DataFrame:
         """
         Generate labeled training data for crop suitability model.
-        
+
+        Records are written to *output_path* in chunks to avoid RAM exhaustion
+        when the combination space is large (many regions × crops × scenarios).
+        If *output_path* is None the full DataFrame is returned in memory
+        (only safe for small datasets / testing).
+
         Args:
             num_weather_scenarios: Number of random weather scenarios per combination
             random_seed: Random seed for reproducibility
-            
+            output_path: CSV path to stream records into (recommended for production)
+            chunk_size: Flush to disk every this many records (default 50 000)
+
         Returns:
             DataFrame with features and suitability_score label
         """
+        import csv, os
+
         np.random.seed(random_seed)
-        
+
         regions = self.region_manager.get_all_regions()
         seasons = ['Kharif', 'Rabi', 'Zaid']
         soil_textures = ['Clay', 'Loam', 'Sandy', 'Clay-Loam', 'Sandy-Loam']
         irrigation_options = [True, False]
-        
-        records = []
-        
-        for crop in self.crops_data:
-            for region in regions:
-                for season in seasons:
-                    for texture in soil_textures:
-                        for irrigation in irrigation_options:
-                            # Generate multiple weather scenarios
-                            for _ in range(num_weather_scenarios):
-                                record = self._generate_single_record(
-                                    crop, region, season, texture, irrigation
-                                )
-                                if record is not None:
-                                    records.append(record)
-        
-        df = pd.DataFrame(records)
-        logger.info(f"Generated {len(df)} training records for crop suitability model")
-        return df
+
+        chunk: list = []
+        total_written = 0
+        header_written = False
+        file_handle = None
+
+        if output_path:
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            file_handle = open(output_path, "w", newline="", encoding="utf-8")
+            csv_writer = None  # initialised on first record so we know field names
+
+        try:
+            for crop in self.crops_data:
+                for region in regions:
+                    for season in seasons:
+                        for texture in soil_textures:
+                            for irrigation in irrigation_options:
+                                for _ in range(num_weather_scenarios):
+                                    record = self._generate_single_record(
+                                        crop, region, season, texture, irrigation
+                                    )
+                                    if record is None:
+                                        continue
+
+                                    if output_path:
+                                        # Lazy-initialise CSV writer on first valid record
+                                        if csv_writer is None:
+                                            csv_writer = csv.DictWriter(
+                                                file_handle, fieldnames=list(record.keys())
+                                            )
+                                            csv_writer.writeheader()
+                                        chunk.append(record)
+                                        if len(chunk) >= chunk_size:
+                                            csv_writer.writerows(chunk)
+                                            total_written += len(chunk)
+                                            logger.info(
+                                                f"  Flushed {total_written:,} records → {output_path}"
+                                            )
+                                            chunk = []
+                                    else:
+                                        chunk.append(record)
+
+            # Flush remaining records
+            if output_path and csv_writer and chunk:
+                csv_writer.writerows(chunk)
+                total_written += len(chunk)
+                chunk = []
+
+        finally:
+            if file_handle:
+                file_handle.close()
+
+        if output_path:
+            logger.info(
+                f"Generated {total_written:,} training records → {output_path}"
+            )
+            return pd.read_csv(output_path)
+        else:
+            df = pd.DataFrame(chunk)
+            logger.info(f"Generated {len(df)} training records for crop suitability model")
+            return df
     
     def _generate_single_record(
         self, crop, region, season, soil_texture, irrigation
