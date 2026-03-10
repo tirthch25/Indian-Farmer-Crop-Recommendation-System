@@ -175,12 +175,20 @@ function renderOverview(data) {
     if (seasonEl) seasonEl.textContent = (data.season && data.season.current) || '-';
 
     const forecast = data.medium_range_forecast || {};
+
+    // Temperature — use nullish coalescing so 0°C is not treated as falsy
+    const rawTemp = forecast.expected_avg_temp ?? forecast.ml_summary?.avg_temp ?? null;
     const tempEl = document.getElementById('result-temp');
-    if (tempEl) tempEl.textContent =
-        (forecast.expected_avg_temp || (forecast.ml_summary && forecast.ml_summary.avg_temp) || '-') + '°C';
+    if (tempEl) tempEl.textContent = rawTemp !== null
+        ? parseFloat(rawTemp).toFixed(1) + '°C'
+        : '-';
+
+    // Rainfall — same pattern
+    const rawRain = forecast.expected_rainfall_mm ?? forecast.ml_summary?.total_rainfall ?? null;
     const rainEl = document.getElementById('result-rain');
-    if (rainEl) rainEl.textContent =
-        (forecast.expected_rainfall_mm || (forecast.ml_summary && forecast.ml_summary.total_rainfall) || '-') + ' mm';
+    if (rainEl) rainEl.textContent = rawRain !== null
+        ? Math.round(rawRain) + ' mm'
+        : '-';
     const soilEl = document.getElementById('result-soil');
     if (soilEl) soilEl.textContent =
         data.soil ? data.soil.texture + ' (pH ' + data.soil.ph + ')' : '-';
