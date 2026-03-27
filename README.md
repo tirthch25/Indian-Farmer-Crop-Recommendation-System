@@ -9,7 +9,7 @@
 ![scikit-learn](https://img.shields.io/badge/Scikit--Learn-ML-F7931E?style=for-the-badge&logo=scikit-learn)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
-**A nationwide, season-aware, AI-powered crop recommendation system for Indian farmers — covering 700+ districts across all major Indian states.**
+**A nationwide, season-aware, AI-powered crop recommendation system for Indian farmers — covering 640+ districts across all major Indian states.**
 
 [Features](#-features) • [How It Works](#-how-it-works) • [Installation](#-installation) • [API Docs](#-api-endpoints) • [Tech Stack](#-tech-stack) • [Project Structure](#-project-structure)
 
@@ -19,7 +19,7 @@
 
 ## 🧭 Overview
 
-The **Indian Farmer Crop Recommendation System** (v4.0) is a full-stack intelligent advisory platform built to help farmers across India make data-driven decisions about which crops to grow. It combines **real-time weather data**, **district-level historical weather records** (178 districts across 7 states), **ML-powered forecasting** (LSTM + XGBoost ensemble trained on real district data), **crop suitability prediction** (Random Forest), **risk assessment**, **pest warnings**, and a **planting calendar** — all accessible through a clean web UI and a RESTful API.
+The **Indian Farmer Crop Recommendation System** (v1.0) is a full-stack intelligent advisory platform built to help farmers across India make data-driven decisions about which crops to grow. It combines **real-time weather data**, **district-level historical weather records** (~40,180 records spanning 10+ years for 640+ districts across 34 states), **ML-powered forecasting** (LSTM + XGBoost ensemble trained on real district data), **crop suitability prediction** (Random Forest), **risk assessment**, **pest warnings**, and a **planting calendar** — all accessible through a clean web UI and a RESTful API.
 
 Farmers interact through a **bilingual Hindi/English web interface**, while developers can access all features via a **FastAPI REST API** with Swagger documentation.
 
@@ -28,21 +28,21 @@ Farmers interact through a **bilingual Hindi/English web interface**, while deve
 ## ✨ Features
 
 ### 🗺️ Nationwide Regional Coverage
-- **700+ Indian Agricultural Districts** across all major states
+- **640+ Indian Agricultural Districts** across 34 states and union territories
 - Region IDs follow `<STATE_CODE>_<DISTRICT>` format (e.g., `MH_PUNE`, `UP_LUCKNOW`, `PB_LUDHIANA`)
 - Each region includes geographic coordinates, elevation, climate zone, soil type, and supported seasons
 - **Haversine-based nearest region finder** (150 km radius) for GPS coordinate-based lookups
 
 ### 🌦️ Weather & Historical Climate Data
 - Real-time weather fetched from **[Open-Meteo API](https://open-meteo.com/)** — no API key needed
-- **District-level historical weather data** for 178 districts across 7 states (AP, GJ, KA, KL, MH, TG, TN), fetched via `fetch_district_weather.py`
+- **District-level historical weather data** for 640+ districts across 34 states, fetched via `fetch_district_weather.py`
 - **Zone-level historical climate normals** (monthly averages for 6 zones: North, South, East, West, Central, Northeast)
 - Medium-range **17–90 day agricultural forecast** including temperature, rainfall, dry-spell risk, and humidity
 - Month-wise (Jan–Dec) climate chart on the web interface with current-month highlighting
 
 ### 🤖 Machine Learning Models
-- **LSTM Weather Forecasting** — PyTorch-based LSTM trained on 178 districts with 30-day lookback window; forecasts temperature and rainfall 7 days ahead
-- **XGBoost Weather Forecasting** — Gradient-boosted trees with lag features, rolling statistics, and district encoding across 178 districts; separate models for `temp_max`, `temp_min`, and `rainfall`
+- **LSTM Weather Forecasting** — PyTorch-based LSTM trained on 640+ districts with 30-day lookback window; forecasts temperature and rainfall 7 days ahead
+- **XGBoost Weather Forecasting** — Gradient-boosted trees with lag features, rolling statistics, and district encoding across 640+ districts; separate models for `temp_max`, `temp_min`, and `rainfall`
 - **Ensemble forecasting** — LSTM and XGBoost predictions are blended; graceful fallback to zone climatology if district data is unavailable
 - **Crop Suitability** — Random Forest model blending rule-based scores with data-driven predictions
 - **ML score blending** — when models are trained, their predictions are automatically weighted with the rule-based engine
@@ -112,7 +112,7 @@ Multi-factor **suitability score (0–100)** calculated across 6 dimensions:
               ▼
    ┌──────────────────────────────┐
    │  Open-Meteo API              │  → Real-time weather data
-   │  District Historical Data    │  → 178 districts, 7 states
+   │  District Historical Data    │  → 640+ districts, 34 states
    │  Zone Climate Normals        │  → Monthly historical averages
    └──────────┬───────────────────┘
               │
@@ -172,7 +172,7 @@ pip install -r requirements.txt
 ```bash
 python scripts/fetch_district_weather.py
 ```
-> Downloads historical weather data for 178 districts (AP, GJ, KA, KL, MH, TG, TN) from the Open-Meteo API. Required for district-aware LSTM and XGBoost model training. This step takes time due to API rate limits.
+> Downloads historical weather data for 640+ districts from the Open-Meteo API. Required for district-aware LSTM and XGBoost model training. This step takes time due to API rate limits.
 
 ### 5. (Optional) Train the Weather & Crop Suitability Models
 ```bash
@@ -257,7 +257,7 @@ Get weather-triggered pest and disease warnings for a region. Optionally filter 
 Get sowing-to-harvest planting calendar with care tips for a specific crop.
 
 ### `GET /regions`
-Returns all 700+ supported agricultural regions with metadata.
+Returns all 640+ supported agricultural regions with metadata.
 
 ### `GET /health`
 Health check — confirms API is running and reports ML model status.
@@ -294,7 +294,7 @@ agri_crop_recommendation/
 │   │   └── risk.py                  # Drought / temperature / event risk scoring
 │   │
 │   ├── utils/
-│   │   ├── regions.py               # RegionManager — 700+ districts
+│   │   ├── regions.py               # RegionManager — 640+ districts
 │   │   └── seasons.py               # Season detection & transition logic
 │   │
 │   └── weather/
@@ -304,12 +304,12 @@ agri_crop_recommendation/
 │
 ├── data/
 │   ├── reference/
-│   │   ├── regions.json             # 700+ region profiles (all Indian states)
+│   │   ├── regions.json             # 640+ region profiles (all Indian states)
 │   │   └── crop_knowledge.json      # Growth phases, pest DB, planting windows
 │   └── weather/
 │       ├── zone/
 │       │   └── historical_weather.csv  # Zone-level monthly climate normals
-│       └── district/                   # District-level daily weather (178 districts)
+│       └── district/                   # District-level daily weather (640+ districts)
 │           ├── AP_GUNTUR/
 │           ├── MH_PUNE/
 │           └── ...                     # One folder per district
@@ -385,12 +385,12 @@ agri_crop_recommendation/
 - [x] Crop suitability prediction model (Random Forest — ML blended scoring)
 - [x] Risk assessment engine (drought, temperature stress, extreme events)
 - [x] Pest/disease warning system (50+ crops covered)
-- [x] District-level weather data fetching (178 districts, 7 states)
+- [x] District-level weather data fetching (640+ districts, 34 states)
 - [x] LSTM weather forecasting model (PyTorch, district-aware)
 - [x] XGBoost weather forecasting models (temp_max, temp_min, rainfall)
 - [x] Planning days filter validation
 - [ ] Planting calendar with crop images
-- [ ] Expand district weather coverage to all 700+ regions
+- [x] Expand district weather coverage to all 640+ regions
 
 ---
 
