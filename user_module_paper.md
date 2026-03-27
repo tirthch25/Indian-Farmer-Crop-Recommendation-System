@@ -1,9 +1,9 @@
 # User Module Paper
-## Indian Farmer Crop Recommendation System — v3.0
+## Indian Farmer Crop Recommendation System — v1.0
 
 **Document Type:** User Module Paper  
 **Project:** Indian Farmer Crop Recommendation System  
-**Version:** 3.0  
+**Version:** 1.0  
 **Prepared By:** Development Team — CDAC  
 **Date:** March 2026  
 **Platform:** Web Application (FastAPI + HTML/JS)  
@@ -57,7 +57,7 @@ The **Indian Farmer Crop Recommendation System** is an AI-powered agricultural a
 | **Crops in Database** | 50+ short-duration crops (15–90 days) |
 | **Historical Weather Records** | ~40,180 records spanning 10+ years |
 | **ML Models** | 3 (LSTM, XGBoost, Random Forest) |
-| **API Version** | v3.0 |
+| **API Version** | v1.0 |
 
 ---
 
@@ -172,7 +172,7 @@ Provides a single-page web application that allows farmers (or agricultural advi
 ## 4. Module 2 — REST API Layer
 
 **Location:** `src/api/app.py`  
-**Framework:** FastAPI v3.0  
+**Framework:** FastAPI v1.0  
 **Server:** Uvicorn (ASGI)  
 **Entry Point:** `run_website.py`
 
@@ -819,7 +819,7 @@ POST /recommend
 
 ```
 GET /health
-Response: { "status": "healthy", "version": "3.0", "regions_loaded": 640, ... }
+Response: { "status": "healthy", "version": "1.0", "regions_loaded": 640, ... }
 ```
 
 ### Get All Regions
@@ -864,7 +864,7 @@ Response: { "crop": "Green Gram (Moong)", "calendar": { "phases": [...], "care_t
 
 | Layer | Technology | Version / Details |
 |-------|-----------|-------------------|
-| **Backend Framework** | FastAPI | v3.0, Python |
+| **Backend Framework** | FastAPI | v1.0, Python |
 | **ASGI Server** | Uvicorn | Python |
 | **Frontend** | HTML5, Vanilla JS, CSS3 | Single-page app |
 | **Charting** | Chart.js | v4.4.0 |
@@ -976,5 +976,5 @@ agri_crop_recommendation/
 
 ---
 
-*End of User Module Paper — Indian Farmer Crop Recommendation System v3.0*  
+*End of User Module Paper — Indian Farmer Crop Recommendation System v1.0*  
 *Prepared by CDAC Development Team | March 2026*
