@@ -23,7 +23,7 @@ app = FastAPI(
     description="ML-powered crop recommendation system with weather forecasting (LSTM + XGBoost), "
                 "crop suitability prediction (Random Forest), risk assessment, pest warnings, "
                 "and planting calendar for Indian farmers.",
-    version="3.0"
+    version="1.0"
 )
 
 # Mount static files
@@ -134,7 +134,7 @@ def health_check():
     
     return {
         "status": "healthy",
-        "version": "3.0",
+        "version": "1.0",
         "regions_loaded": len(region_manager.get_all_regions()),
         "ml_models": ml_status,
         "timestamp": datetime.now().isoformat()
