@@ -8,6 +8,7 @@
 ![XGBoost](https://img.shields.io/badge/XGBoost-Weather%20Forecast-007ACC?style=for-the-badge)
 ![scikit-learn](https://img.shields.io/badge/Scikit--Learn-ML-F7931E?style=for-the-badge&logo=scikit-learn)
 ![Gemini](https://img.shields.io/badge/Gemini-LLM%20Powered-4285F4?style=for-the-badge&logo=google)
+![Version](https://img.shields.io/badge/Version-2.0-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 **A nationwide, season-aware, AI-powered crop recommendation system for Indian farmers — covering all 640 districts across all major Indian states.**
@@ -20,9 +21,9 @@
 
 ## 🧭 Overview
 
-The **Indian Farmer Crop Recommendation System** (v1.0) is a full-stack intelligent advisory platform built to help farmers across India make data-driven decisions about which crops to grow. It combines **real-time weather data**, **district-level historical weather records** (~40,180 records spanning 10+ years for 640+ districts across 34 states), **ML-powered forecasting** (LSTM + XGBoost ensemble trained on real district data), **crop suitability prediction** (Random Forest), **risk assessment**, **pest warnings**, **planting calendar**, and now a **Gemini LLM layer** that filters geographically inappropriate crops and generates farmer-friendly AI explanations — all accessible through a clean web UI and a RESTful API.
+The **Indian Farmer Crop Recommendation System** (v2.0) is a full-stack intelligent advisory platform built to help farmers across India make data-driven decisions about which crops to grow. It combines **real-time weather data**, **district-level historical weather records** (~40,180 records spanning 10+ years for 640+ districts across 34 states), **ML-powered forecasting** (LSTM + XGBoost ensemble trained on real district data), **crop suitability prediction** (Random Forest), **risk assessment**, **pest warnings**, **visual planting calendar**, a **Gemini LLM layer** that filters geographically inappropriate crops and generates farmer-friendly AI explanations, and a new **AI Farming Chat** feature — all accessible through a premium white-theme web UI and a RESTful API.
 
-Farmers interact through a **bilingual Hindi/English web interface**, while developers can access all features via a **FastAPI REST API** with Swagger documentation.
+Farmers interact through a **Hindi/English web interface**, while developers can access all features via a **FastAPI REST API** with Swagger documentation at `/docs`.
 
 ---
 
@@ -449,7 +450,11 @@ GEMINI_API_KEY=your_key_here
 - [x] Full agro-climatic zone suitability for all 640 regions (0.75 score, no more 0.50 fallback gap)
 - [x] Gemini LLM regional crop filter (removes geographically wrong crops per district)
 - [x] Gemini LLM farmer-friendly explainer (Hindi / Marathi / English, top 3 crops)
-- [ ] Planting calendar with crop images
+- [x] Planting calendar with visual phase timeline and crop emoji icons
+- [x] **v2.0 UI overhaul** — premium white/cream light theme with glassmorphism cards, AI badge, LLM explanation rendering
+- [x] **AI Farming Chat** — `POST /chat` endpoint powered by Gemini for free-form farmer Q&A (grounded in district + season context)
+- [x] `/health` endpoint now reports LLM availability (`llm_available`, `llm_model`)
+- [x] Ground-level coverage verified: all 640 districts return recommendations via zone-based suitability (0.75 baseline score)
 
 ---
 
