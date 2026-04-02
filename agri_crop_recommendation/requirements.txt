@@ -12,3 +12,5 @@ xgboost
 joblib
 matplotlib
 seaborn
+google-genai
+python-dotenv

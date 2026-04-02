@@ -1,4 +1,4 @@
-﻿"""
+"""
 Enhanced Crop Recommendation Engine
 
 Integrates historical data, ML predictions, soil compatibility, risk assessment,
@@ -7,6 +7,11 @@ and season-aware logic to provide comprehensive crop recommendations for Indian 
 ML Integration:
     - When Random Forest model is available: final_score = 0.6*ML + 0.4*rule_based
     - Falls back to pure rule-based scoring when ML model is not available
+
+LLM Integration (Hybrid Mode):
+    - Gemini LLM filters crops by regional farming knowledge BEFORE ML scoring
+    - Solves the 552-region coverage gap in the static crop database
+    - Gracefully falls back to rule-based if LLM is unavailable
 """
 
 from typing import List, Dict, Optional
@@ -21,6 +26,14 @@ from src.crops.soil import SoilInfo, calculate_soil_compatibility_score
 from src.utils.regions import RegionManager
 from src.utils.seasons import detect_season, is_season_transition, get_season_water_adjustment
 
+# LLM filter (optional — graceful fallback if unavailable)
+try:
+    from src.services.llm_filter import llm_filter_crops
+    _LLM_AVAILABLE = True
+except ImportError:
+    _LLM_AVAILABLE = False
+    llm_filter_crops = None
+
 logger = logging.getLogger(__name__)
 
 # Cache for ML model (loaded once)
@@ -31,10 +44,11 @@ def _get_regional_score(crop, region_id: str) -> float:
     """
     Look up regional suitability score for a crop.
     Handles both new-style IDs (MH_PUNE) and legacy short IDs (PUNE).
-    Falls back to 0.65 (moderate suitability) if region not found.
+    Falls back to 0.50 (below-average) if region not found — penalizes
+    crops with no regional data rather than giving them a free pass.
     """
     if region_id is None:
-        return 0.65
+        return 0.50
     # Try full ID first
     score = crop.regional_suitability.get(region_id)
     if score is not None:
@@ -46,8 +60,8 @@ def _get_regional_score(crop, region_id: str) -> float:
         score = crop.regional_suitability.get(short_key)
         if score is not None:
             return score
-    # Default moderate suitability for unknown regions
-    return 0.65
+    # Default below-average for unknown regions — no free pass
+    return 0.50
 
 
 def _load_crop_ml_model():
@@ -146,11 +160,52 @@ def recommend_crops(
     
     # Filter by region if provided — skip if region has new-style ID with no crop-db match
     if region_id:
-        # Use a generous threshold; _get_regional_score handles key mapping
+        # Raised threshold from 0.3 -> 0.45 to reduce irrelevant crop pass-through
         season_crops = [c for c in season_crops
-                        if _get_regional_score(c, region_id) >= 0.3]
+                        if _get_regional_score(c, region_id) >= 0.45]
         logger.info(f"Filtered to {len(season_crops)} crops suitable for {region_id}")
-    
+
+    # ── LLM Regional Gate (Hybrid Mode) ──────────────────────────────────────
+    # Ask Gemini which crops are ACTUALLY cultivated in this region.
+    # This solves the 552-region coverage gap in the static database.
+    # Falls back silently to the rule-based list if LLM is unavailable.
+    if region_id and _LLM_AVAILABLE and season_crops:
+        try:
+            crop_ids_list   = [c.crop_id    for c in season_crops]
+            crop_names_list = [c.common_name for c in season_crops]
+
+            # Resolve region name for the prompt
+            try:
+                rm = RegionManager()
+                region_obj  = rm.get_region_profile(region_id)
+                region_name = region_obj.name  if region_obj else region_id
+                state_name  = getattr(region_obj, 'state', '') if region_obj else ''
+            except Exception:
+                region_name = region_id
+                state_name  = ''
+
+            approved_ids = llm_filter_crops(
+                crop_ids=crop_ids_list,
+                crop_names=crop_names_list,
+                region_id=region_id,
+                region_name=region_name,
+                season=season,
+                state=state_name,
+            )
+
+            if approved_ids is not None:
+                approved_set = set(approved_ids)
+                season_crops = [c for c in season_crops if c.crop_id in approved_set]
+                logger.info(
+                    f"LLM gate: {len(crop_ids_list)} → {len(season_crops)} crops "
+                    f"approved for {region_name}"
+                )
+            else:
+                logger.info("LLM gate unavailable — using rule-based list")
+        except Exception as e:
+            logger.warning(f"LLM gate error (falling back): {e}")
+    # ── End LLM Gate ─────────────────────────────────────────────────────────
+
     # Filter by soil if provided
     if soil:
         season_crops = crop_db.filter_by_soil(season_crops, soil, min_score=40.0)
