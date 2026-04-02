@@ -4,7 +4,7 @@
 **Document Type:** User Module Paper  
 **Project:** Indian Farmer Crop Recommendation System  
 **Version:** 1.0  
-**Prepared By:** Development Team — CDAC  
+**Prepared By:** HPC Group,CDAC-Pune 
 **Date:** March 2026  
 **Platform:** Web Application (FastAPI + HTML/JS)  
 **Access URL:** `http://localhost:8000`
@@ -977,4 +977,4 @@ agri_crop_recommendation/
 ---
 
 *End of User Module Paper — Indian Farmer Crop Recommendation System v1.0*  
-*Prepared by CDAC Development Team | March 2026*
+*Prepared by HPC Group,CDAC-Pune | March 2026*

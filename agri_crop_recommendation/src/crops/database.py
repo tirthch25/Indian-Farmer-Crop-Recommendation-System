@@ -1,4 +1,4 @@
-﻿"""
+"""
 Comprehensive Crop Knowledge Base for Indian Agriculture
 
 Contains short-duration crops (15-90 days) with detailed information including
@@ -15,48 +15,283 @@ logger = logging.getLogger(__name__)
 
 
 # ── Zone → Region ID mapping (for nationwide suitability coverage) ──────────
-# Each zone maps to key representative region IDs from regions.json.
+# Each zone maps to ALL region IDs from regions.json for that agro-climatic zone.
 # Suitability 0.75 is assigned whenever a crop's zone matches.
-# Regions not in this dict get the recommender's 0.65 fallback.
+# Regions not in this dict get the recommender's 0.50 fallback (penalized).
 ZONE_REGIONS = {
     "North": [
+        # Uttar Pradesh (complete)
         "UP_LUCKNOW","UP_VARANASI","UP_AGRA","UP_KANPUR","UP_ALLAHABAD",
         "UP_MEERUT","UP_BAREILLY","UP_GORAKHPUR","UP_MORADABAD","UP_ALIGARH",
-        "PB_LUDHIANA","PB_AMRITSAR","PB_JALANDHAR","PB_PATIALA",
-        "HR_AMBALA","HR_HISAR","HR_KARNAL","HR_ROHTAK",
+        "UP_MATHURA","UP_FIROZABAD","UP_MAINPURI","UP_ETAWAH","UP_FARRUKHABAD",
+        "UP_HARDOI","UP_SITAPUR","UP_LAKHIMPUR_KHERI","UP_BARABANKI","UP_RAEBARELI",
+        "UP_SULTANPUR","UP_PRATAPGARH","UP_AZAMGARH","UP_MAU","UP_BALLIA",
+        "UP_GHAZIPUR","UP_JAUNPUR","UP_MIRZAPUR","UP_SONBHADRA","UP_CHANDAULI",
+        "UP_BHADOHI","UP_BANDA","UP_CHITRAKOOT","UP_HAMIRPUR","UP_MAHOBA",
+        "UP_LALITPUR","UP_JHANSI","UP_JALAUN","UP_FATEHPUR","UP_PRAYAGRAJ",
+        "UP_PILIBHIT","UP_SHAHJAHANPUR","UP_RAMPUR","UP_SAMBHAL","UP_AMROHA",
+        "UP_BULANDSHAHR","UP_HAPUR","UP_GAUTAM_BUDDH_NAGAR","UP_GHAZIABAD",
+        "UP_MUZAFFARNAGAR","UP_SHAMLI","UP_BIJNOR","UP_SAHARANPUR",
+        "UP_UNNAO","UP_KANPUR_DEHAT","UP_ETAH","UP_KASGANJ","UP_BUDAUN",
+        "UP_BAHRAICH","UP_SHRAWASTI","UP_BALRAMPUR","UP_GONDA","UP_BASTI",
+        "UP_SANT_KABIR_NAGAR","UP_SIDDHARTHNAGAR","UP_MAHARAJGANJ","UP_KUSHINAGAR",
+        "UP_DEORIA","UP_AMBEDKAR_NAGAR","UP_AMETHI","UP_AYODHYA","UP_LAKHIMPUR",
+        # Punjab (complete)
+        "PB_LUDHIANA","PB_AMRITSAR","PB_JALANDHAR","PB_PATIALA","PB_GURDASPUR",
+        "PB_HOSHIARPUR","PB_NAWANSHAHR","PB_RUPNAGAR","PB_FATEHGARH_SAHIB",
+        "PB_MOHALI","PB_KAPURTHALA","PB_FIROZPUR","PB_FAZILKA","PB_MUKTSAR",
+        "PB_MOGA","PB_BARNALA","PB_SANGRUR","PB_MANSA","PB_BATHINDA",
+        "PB_FARIDKOT","PB_TARN_TARAN","PB_PATHANKOT",
+        # Haryana (complete)
+        "HR_AMBALA","HR_HISAR","HR_KARNAL","HR_ROHTAK","HR_FARIDABAD",
+        "HR_GURUGRAM","HR_MEWAT","HR_PALWAL","HR_REWARI","HR_MAHENDRAGARH",
+        "HR_BHIWANI","HR_CHARKHI_DADRI","HR_JHAJJAR","HR_SONIPAT","HR_PANIPAT",
+        "HR_KAITHAL","HR_KURUKSHETRA","HR_YAMUNANAGAR","HR_PANCHKULA",
+        "HR_SIRSA","HR_FATEHABAD","HR_JIND",
+        # Rajasthan (complete)
         "RJ_JAIPUR","RJ_JODHPUR","RJ_UDAIPUR","RJ_AJMER","RJ_BIKANER",
-        "HP_SHIMLA","HP_KANGRA","UK_DEHRADUN","UK_HARIDWAR",
-        "DL_NEW_DELHI","JK_JAMMU","JK_SRINAGAR",
+        "RJ_ALWAR","RJ_BHARATPUR","RJ_DAUSA","RJ_DHOLPUR","RJ_KARAULI",
+        "RJ_SAWAI_MADHOPUR","RJ_TONK","RJ_BUNDI","RJ_KOTA","RJ_BARAN",
+        "RJ_JHALAWAR","RJ_CHITTORGARH","RJ_RAJSAMAND","RJ_BHILWARA",
+        "RJ_SIKAR","RJ_JHUNJHUNU","RJ_CHURU","RJ_HANUMANGARH","RJ_GANGANAGAR",
+        "RJ_NAGAUR","RJ_PALI","RJ_SIROHI","RJ_JALORE","RJ_BARMER",
+        "RJ_JAISALMER","RJ_DUNGARPUR","RJ_BANSWARA","RJ_PRATAPGARH",
+        # Himachal Pradesh (complete)
+        "HP_SHIMLA","HP_KANGRA","HP_MANDI","HP_SOLAN","HP_SIRMAUR","HP_BILASPUR",
+        "HP_UNA","HP_HAMIRPUR","HP_KULLU","HP_LAHAUL_SPITI","HP_CHAMBA","HP_KINNAUR",
+        # Uttarakhand (complete)
+        "UK_DEHRADUN","UK_HARIDWAR","UK_NAINITAL","UK_UDHAM_SINGH_NAGAR",
+        "UK_ALMORA","UK_PITHORAGARH","UK_CHAMPAWAT","UK_BAGESHWAR",
+        "UK_CHAMOLI","UK_RUDRAPRAYAG","UK_TEHRI_GARHWAL","UK_PAURI_GARHWAL","UK_UTTARKASHI",
+        # Delhi & J&K
+        "DL_NEW_DELHI",
+        "JK_JAMMU","JK_SRINAGAR","JK_BARAMULLA","JK_ANANTNAG","JK_PULWAMA",
+        "JK_BUDGAM","JK_KULGAM","JK_SHOPIAN","JK_GANDERBAL","JK_BANDIPORA",
+        "JK_KUPWARA","JK_KATHUA","JK_UDHAMPUR","JK_DODA","JK_KISHTWAR",
+        "JK_RAMBAN","JK_REASI","JK_RAJOURI","JK_POONCH","JK_SAMBA",
     ],
+
     "South": [
+        # Karnataka (complete)
         "KA_BENGALURU","KA_MYSURU","KA_HUBLI","KA_DHARWAD","KA_BELAGAVI",
-        "TN_CHENNAI","TN_COIMBATORE","TN_MADURAI","TN_TIRUNELVELI",
-        "AP_VISAKHAPATNAM","AP_GUNTUR","AP_KRISHNA","AP_KURNOOL","AP_CHITTOOR",
+        "KA_BALLARI","KA_RAICHUR","KA_KOPPAL","KA_GADAG","KA_HAVERI",
+        "KA_UTTARA_KANNADA","KA_SHIVAMOGGA","KA_CHIKKAMAGALURU","KA_HASSAN",
+        "KA_KODAGU","KA_MANDYA","KA_CHAMARAJANAGAR","KA_TUMKURU",
+        "KA_CHITRADURGA","KA_DAVANAGERE","KA_KOLAR","KA_CHIKKABALLAPURA",
+        "KA_RAMANAGARA","KA_BENGALURU_RURAL","KA_YADGIR","KA_BIDAR",
+        "KA_KALABURAGI","KA_VIJAYAPURA","KA_BAGALKOT","KA_DAKSHINA_KANNADA","KA_UDUPI",
+        # Tamil Nadu (complete)
+        "TN_CHENNAI","TN_COIMBATORE","TN_MADURAI","TN_TIRUNELVELI","TN_SALEM",
+        "TN_ERODE","TN_NAMAKKAL","TN_DHARMAPURI","TN_KRISHNAGIRI","TN_VELLORE",
+        "TN_TIRUVANNAMALAI","TN_VILLUPURAM","TN_CUDDALORE","TN_NAGAPATTINAM",
+        "TN_THANJAVUR","TN_TIRUVARUR","TN_PUDUKKOTTAI","TN_DINDIGUL","TN_THENI",
+        "TN_VIRUDHUNAGAR","TN_RAMANATHAPURAM","TN_THOOTHUKUDI","TN_KANYAKUMARI",
+        "TN_TENKASI","TN_TRICHIRAPPALLI","TN_PERAMBALUR","TN_ARIYALUR","TN_KARUR",
+        "TN_SIVAGANGA","TN_NILGIRIS","TN_KANCHEEPURAM","TN_TIRUVALLUR",
+        "TN_RANIPET","TN_TIRUPATTUR","TN_KALLAKURICHI","TN_CHENGALPATTU","TN_MAYILADUTHURAI",
+        # Andhra Pradesh (complete)
+        "AP_VISAKHAPATNAM","AP_SRIKAKULAM","AP_VIZIANAGARAM","AP_KRISHNA",
+        "AP_GUNTUR","AP_KURNOOL","AP_ANANTAPUR","AP_CHITTOOR","AP_EAST_GODAVARI",
+        "AP_WEST_GODAVARI","AP_PRAKASAM","AP_NELLORE","AP_KADAPA",
+        "AP_PARVATHIPURAM_MANYAM","AP_ALLURI_SITHARAMA_RAJU","AP_ANAKAPALLI",
+        "AP_KAKINADA","AP_KONASEEMA","AP_ELURU","AP_NTR","AP_BAPATLA",
+        "AP_PALNADU","AP_NANDYAL","AP_SRI_SATHYA_SAI","AP_ANNAMAYYA","AP_TIRUPATI",
+        # Telangana (complete)
         "TS_HYDERABAD","TS_WARANGAL","TS_NIZAMABAD","TS_KARIMNAGAR",
-        "KL_THIRUVANANTHAPURAM","KL_KOZHIKODE","KL_THRISSUR",
+        "TS_ADILABAD","TS_KOMARAM_BHEEM","TS_MANCHERIAL","TS_NIRMAL",
+        "TS_JAGTIAL","TS_PEDDAPALLI","TS_JAYASHANKAR","TS_RAJANNA_SIRCILLA",
+        "TS_MEDCHAL_MALKAJGIRI","TS_YADADRI_BHUVANAGIRI","TS_JANGAON",
+        "TS_HANAMKONDA","TS_MULUGU","TS_BHADRADRI_KOTHAGUDEM","TS_KHAMMAM",
+        "TS_MAHABUBABAD","TS_SURYAPET","TS_NALGONDA","TS_NAGARKURNOOL",
+        "TS_WANAPARTHY","TS_GADWAL","TS_RANGAREDDY","TS_VIKARABAD",
+        "TS_SANGAREDDY","TS_MEDAK","TS_SIDDIPET","TS_KAMAREDDY","TS_MAHABUBNAGAR",
+        # Kerala (complete)
+        "KL_THIRUVANANTHAPURAM","KL_KOLLAM","KL_PATHANAMTHITTA","KL_ALAPPUZHA",
+        "KL_KOTTAYAM","KL_IDUKKI","KL_ERNAKULAM","KL_THRISSUR","KL_PALAKKAD",
+        "KL_MALAPPURAM","KL_KOZHIKODE","KL_WAYANAD","KL_KANNUR","KL_KASARAGOD",
+        # Union territories in South
+        "PY_PUDUCHERRY","AN_PORT_BLAIR","GA_NORTH_GOA","GA_SOUTH_GOA",
     ],
+
     "West": [
-        "MH_PUNE","MH_NASHIK","MH_AURANGABAD","MH_SOLAPUR","MH_KOLHAPUR",
-        "MH_NAGPUR","MH_AHMEDNAGAR","MH_LATUR","MH_JALGAON","MH_SATARA",
+        # Maharashtra (complete — all 33 districts)
+        "MH_PUNE","MH_NASHIK","MH_CHHATRAPATI_SAMBHAJINAGAR","MH_SOLAPUR",
+        "MH_KOLHAPUR","MH_NAGPUR","MH_AHMEDNAGAR","MH_LATUR","MH_JALGAON",
+        "MH_SATARA","MH_NANDED","MH_OSMANABAD","MH_PARBHANI","MH_WASHIM",
+        "MH_YAVATMAL","MH_BULDHANA","MH_AKOLA","MH_AMRAVATI","MH_WARDHA",
+        "MH_CHANDRAPUR","MH_GADCHIROLI","MH_GONDIA","MH_BHANDARA","MH_DHULE",
+        "MH_NANDURBAR","MH_RAIGAD","MH_RATNAGIRI","MH_SINDHUDURG","MH_THANE",
+        "MH_PALGHAR","MH_HINGOLI","MH_SANGLI",
+        # Gujarat (complete)
         "GJ_AHMEDABAD","GJ_SURAT","GJ_VADODARA","GJ_RAJKOT","GJ_ANAND",
-        "GJ_MEHSANA","GJ_JUNAGADH","GJ_BHARUCH",
-        "RJ_JODHPUR","RJ_BIKANER",
+        "GJ_MEHSANA","GJ_JUNAGADH","GJ_BHARUCH","GJ_KUTCH","GJ_BANASKANTHA",
+        "GJ_PATAN","GJ_SABARKANTHA","GJ_GANDHINAGAR","GJ_SURENDRANAGAR",
+        "GJ_MORBI","GJ_JAMNAGAR","GJ_DEVBHUMI_DWARKA","GJ_PORBANDAR",
+        "GJ_GIR_SOMNATH","GJ_AMRELI","GJ_BOTAD","GJ_BHAVNAGAR","GJ_KHEDA",
+        "GJ_ARAVALLI","GJ_CHHOTA_UDAIPUR","GJ_PANCHMAHALS","GJ_DAHOD",
+        "GJ_NARMADA","GJ_TAPI","GJ_NAVSARI","GJ_VALSAD","GJ_DANG",
+        "GJ_MAHESANA",
     ],
+
     "East": [
+        # West Bengal (complete)
         "WB_KOLKATA","WB_HOWRAH","WB_BURDWAN","WB_NADIA","WB_MURSHIDABAD",
-        "WB_MALDA","WB_PURBA_MEDINIPUR","WB_PASCHIM_MEDINIPUR",
+        "WB_MALDA","WB_PURBA_MEDINIPUR","WB_PASCHIM_MEDINIPUR","WB_HOOGHLY",
+        "WB_MIDNAPORE","WB_COOCH_BEHAR","WB_ALIPURDUAR","WB_JALPAIGURI",
+        "WB_DARJEELING","WB_KALIMPONG","WB_JHARGRAM","WB_PASCHIM_BARDHAMAN",
+        "WB_PURULIA","WB_BANKURA","WB_BIRBHUM","WB_UTTAR_DINAJPUR",
+        "WB_DAKSHIN_DINAJPUR","WB_SOUTH_24_PARGANAS","WB_NORTH_24_PARGANAS",
+        "WB_HUGLI","WB_KOCH_BIHAR",
+        # Bihar (complete)
         "BR_PATNA","BR_MUZAFFARPUR","BR_GAYA","BR_BHAGALPUR","BR_DARBHANGA",
-        "OD_BHUBANESWAR","OD_CUTTACK","OD_PURI","OD_SAMBALPUR",
-        "JH_RANCHI","JH_DHANBAD","JH_JAMSHEDPUR",
+        "BR_SARAN","BR_SIWAN","BR_GOPALGANJ","BR_EAST_CHAMPARAN","BR_WEST_CHAMPARAN",
+        "BR_SITAMARHI","BR_SHEOHAR","BR_VAISHALI","BR_SAMASTIPUR","BR_BEGUSARAI",
+        "BR_KHAGARIA","BR_BANKA","BR_MUNGER","BR_LAKHISARAI","BR_SHEIKHPURA",
+        "BR_NALANDA","BR_ARWAL","BR_JEHANABAD","BR_AURANGABAD","BR_NAWADA",
+        "BR_JAMUI","BR_ROHTAS","BR_KAIMUR","BR_BUXAR","BR_BHOJPUR",
+        "BR_MADHUBANI","BR_SUPAUL","BR_SAHARSA","BR_MADHEPURA",
+        "BR_PURNEA","BR_KISHANGANJ","BR_ARARIA","BR_KATIHAR",
+        # Odisha (complete)
+        "OD_BHUBANESWAR","OD_CUTTACK","OD_PURI","OD_SAMBALPUR","OD_ANGUL",
+        "OD_BALANGIR","OD_BALASORE","OD_BARGARH","OD_BHADRAK","OD_BOUDH",
+        "OD_DEBAGARH","OD_DHENKANAL","OD_GAJAPATI","OD_GANJAM","OD_JAGATSINGHPUR",
+        "OD_JAJPUR","OD_JHARSUGUDA","OD_KALAHANDI","OD_KANDHAMAL","OD_KENDRAPARA",
+        "OD_KENDUJHAR","OD_KHORDHA","OD_KORAPUT","OD_MALKANGIRI","OD_MAYURBHANJ",
+        "OD_NABARANGPUR","OD_NAYAGARH","OD_NUAPADA","OD_RAYAGADA","OD_SONEPUR","OD_SUNDARGARH",
+        # Jharkhand (complete)
+        "JH_RANCHI","JH_DHANBAD","JH_JAMSHEDPUR","JH_BOKARO","JH_CHATRA",
+        "JH_DEOGHAR","JH_DUMKA","JH_EAST_SINGHBHUM","JH_GARHWA","JH_GIRIDIH",
+        "JH_GODDA","JH_GUMLA","JH_HAZARIBAGH","JH_JAMTARA","JH_KHUNTI",
+        "JH_KODERMA","JH_LATEHAR","JH_LOHARDAGA","JH_PAKUR","JH_PALAMU",
+        "JH_RAMGARH","JH_SAHEBGANJ","JH_SARAIKELA","JH_SIMDEGA","JH_WEST_SINGHBHUM",
     ],
+
     "Central": [
+        # Madhya Pradesh (complete)
         "MP_BHOPAL","MP_INDORE","MP_GWALIOR","MP_JABALPUR","MP_UJJAIN",
-        "CG_RAIPUR","CG_BILASPUR","CG_DURG","CG_RAJNANDGAON",
-        "MH_NAGPUR","MH_AURANGABAD","MH_LATUR",
+        "MP_AGAR_MALWA","MP_ALIRAJPUR","MP_ANUPPUR","MP_ASHOKNAGAR","MP_BALAGHAT",
+        "MP_BARWANI","MP_BETUL","MP_BHIND","MP_BURHANPUR","MP_CHHATARPUR",
+        "MP_CHHINDWARA","MP_DAMOH","MP_DATIA","MP_DEWAS","MP_DHAR","MP_DINDORI",
+        "MP_GUNA","MP_HARDA","MP_HOSHANGABAD","MP_KATNI","MP_KHANDWA",
+        "MP_KHARGONE","MP_MANDLA","MP_MANDSAUR","MP_MORENA","MP_NARSINGHPUR",
+        "MP_NEEMUCH","MP_NIWARI","MP_PANNA","MP_RAISEN","MP_RAJGARH","MP_RATLAM",
+        "MP_REWA","MP_SAGAR","MP_SATNA","MP_SEHORE","MP_SEONI","MP_SHAHDOL",
+        "MP_SHAJAPUR","MP_SHEOPUR","MP_SHIVPURI","MP_SIDHI","MP_SINGRAULI",
+        "MP_TIKAMGARH","MP_UMARIA","MP_VIDISHA","MP_MURAINA",
+        # Chhattisgarh (complete)
+        "CG_RAIPUR","CG_BILASPUR","CG_DURG","CG_RAJNANDGAON","CG_BALOD",
+        "CG_BALODA_BAZAR","CG_BALRAMPUR","CG_BASTAR","CG_BEMETARA","CG_BIJAPUR",
+        "CG_DANTEWADA","CG_DHAMTARI","CG_GARIABAND","CG_JANJGIR_CHAMPA",
+        "CG_JASHPUR","CG_KABIRDHAM","CG_KANKER","CG_KONDAGAON","CG_KORBA",
+        "CG_KORIYA","CG_MAHASAMUND","CG_MUNGELI","CG_NARAYANPUR","CG_RAIGARH",
+        "CG_SAKTI","CG_SUKMA","CG_SURAJPUR","CG_SURGUJA",
+        # Vidarbha (Maharashtra) also Central agro-climatic zone
+        "MH_NAGPUR","MH_WARDHA","MH_CHANDRAPUR","MH_GADCHIROLI",
+        "MH_GONDIA","MH_BHANDARA","MH_AMRAVATI","MH_BULDHANA","MH_AKOLA","MH_WASHIM",
     ],
+
     "Northeast": [
+        # Assam (complete)
         "AS_KAMRUP","AS_NAGAON","AS_DIBRUGARH","AS_JORHAT","AS_BARPETA",
-        "AR_PAPUM_PARE","AR_LOHIT",
+        "AS_BISWANATH","AS_BONGAIGAON","AS_CACHAR","AS_CHARAIDEO","AS_CHIRANG",
+        "AS_DARRANG","AS_DHEMAJI","AS_DHUBRI","AS_DIMA_HASAO","AS_GOALPARA",
+        "AS_GOLAGHAT","AS_HAILAKANDI","AS_HOJAI","AS_KAMRUP_METRO","AS_KARBI_ANGLONG",
+        "AS_KARIMGANJ","AS_KOKRAJHAR","AS_LAKHIMPUR","AS_MAJULI","AS_MORIGAON",
+        "AS_NALBARI","AS_SIVASAGAR","AS_SONITPUR","AS_SOUTH_SALMARA","AS_TAMULPUR",
+        "AS_TINSUKIA","AS_UDALGURI","AS_WEST_KARBI_ANGLONG",
+        # Arunachal Pradesh
+        "AR_PAPUM_PARE","AR_LOHIT","AR_CHANGLANG","AR_DIBANG_VALLEY",
+        "AR_EAST_KAMENG","AR_EAST_SIANG","AR_KURUNG_KUMEY","AR_LONGDING",
+        "AR_LOWER_DIBANG_VALLEY","AR_LOWER_SIANG","AR_LOWER_SUBANSIRI","AR_NAMSAI",
+        "AR_SIANG","AR_TAWANG","AR_TIRAP","AR_UPPER_DIBANG_VALLEY",
+        "AR_UPPER_SIANG","AR_UPPER_SUBANSIRI","AR_WEST_KAMENG","AR_WEST_SIANG",
+        # Manipur, Meghalaya, Mizoram, Nagaland, Sikkim, Tripura
+        "MN_BISHNUPUR","MN_CHANDEL","MN_CHURACHANDPUR","MN_IMPHAL_EAST",
+        "MN_IMPHAL_WEST","MN_SENAPATI","MN_TAMENGLONG","MN_THOUBAL","MN_UKHRUL",
+        "ML_EAST_GARO_HILLS","ML_EAST_JAINTIA_HILLS","ML_EAST_KHASI_HILLS",
+        "ML_NORTH_GARO_HILLS","ML_RI_BHOI","ML_SOUTH_GARO_HILLS",
+        "ML_WEST_GARO_HILLS","ML_WEST_JAINTIA_HILLS","ML_WEST_KHASI_HILLS",
+        "MZ_AIZAWL","MZ_CHAMPHAI","MZ_KOLASIB","MZ_LAWNGTLAI","MZ_LUNGLEI",
+        "MZ_MAMIT","MZ_SAIHA","MZ_SERCHHIP",
+        "NL_DIMAPUR","NL_KOHIMA","NL_MOKOKCHUNG","NL_MON","NL_PHEK",
+        "NL_TUENSANG","NL_WOKHA","NL_ZUNHEBOTO",
+        "SK_EAST_SIKKIM","SK_NORTH_SIKKIM","SK_SOUTH_SIKKIM","SK_WEST_SIKKIM",
+        "TR_DHALAI","TR_GOMATI","TR_KHOWAI","TR_NORTH_TRIPURA","TR_SEPAHIJALA",
+        "TR_SOUTH_TRIPURA","TR_UNAKOTI","TR_WEST_TRIPURA",
+        # Lakshadweep (island)
+        "LD_LAKSHADWEEP",
+    ],
+
+    # ── Alternate / Variant IDs ───────────────────────────────────────────────
+    # Some districts in regions.json use alternate spellings or prefixes.
+    # Mapped here so they get zone scores instead of the 0.50 fallback.
+    "North_Alt": [
+        # Delhi alternate
+        "DL_DELHI","CH_CHANDIGARH",
+        # UP alternate spellings
+        "UP_AURAIYA","UP_BAGHPAT","UP_GAUTAM_BUDDHA_NAGAR","UP_HATHRAS",
+        "UP_KANNAUJ","UP_KAUSHAMBI","UP_RAE_BARELI","UP_SHRAVASTI",
+        # Punjab alternate
+        "PB_FEROZEPUR","PB_ROPAR","PB_SAS_NAGAR_MOHALI",
+        # Haryana alternate
+        "HR_NUH",
+        # Rajasthan alternate
+        "RJ_SRI_GANGANAGAR",
+        # Ladakh
+        "LA_LEH",
+    ],
+    "South_Alt": [
+        # Telangana uses TL_ prefix in some records
+        "TL_ADILABAD","TL_BHADRADRI_KOTHAGUDEM","TL_GADWAL","TL_HANAMKONDA",
+        "TL_HYDERABAD","TL_JAGTIAL","TL_JANGAON","TL_JAYASHANKAR",
+        "TL_JOGULAMBA","TL_KAMAREDDY","TL_KARIMNAGAR","TL_KHAMMAM",
+        "TL_KUMURAM_BHEEM","TL_MAHABUBABAD","TL_MAHABUBNAGAR","TL_MANCHERIAL",
+        "TL_MEDAK","TL_MEDCHAL","TL_MULUGU","TL_NAGARKURNOOL","TL_NALGONDA",
+        "TL_NARAYANPET","TL_NIRMAL","TL_NIZAMABAD","TL_PEDDAPALLI",
+        "TL_RAJANNA_SIRCILLA","TL_RANGAREDDY","TL_SANGAREDDY","TL_SIDDIPET",
+        "TL_SURYAPET","TL_VIKARABAD","TL_WANAPARTHY","TL_WARANGAL","TL_YADADRI",
+        # Karnataka alternate spellings
+        "KA_BANGALORE_RURAL","KA_CHIKBALLAPUR","KA_MYSORE","KA_TUMKUR",
+        # Tamil Nadu alternate
+        "TN_KANCHIPURAM","TN_TIRUCHIRAPPALLI","TN_TIRUPATHUR","TN_TIRUPPUR",
+        # Puducherry
+        "PY_PUDUCHERRY",
+    ],
+    "West_Alt": [
+        # Maharashtra alternate / missing districts
+        "MH_BEED","MH_JALNA",
+        # Gujarat alternate spellings
+        "GJ_DEVBHOOMI_DWARKA","GJ_MAHISAGAR","GJ_PANCHMAHAL",
+    ],
+    "East_Alt": [
+        # Bihar with doubled-district-name IDs (data inconsistency in regions.json)
+        "BR_ARARIA_ARARIA","BR_ARWAL_ARWAL","BR_AURANGABAD_BR_AURANGABAD",
+        "BR_BANKA_BANKA","BR_BEGUSARAI_BEGUSARAI","BR_BHABUA_BHABUA",
+        "BR_BUXAR_BUXAR","BR_EAST_CHAMPARAN_EAST_CHAMPARAN",
+        "BR_GOPALGANJ_GOPALGANJ","BR_JAMUI_JAMUI","BR_JEHANABAD_JEHANABAD",
+        "BR_KAIMUR_KAIMUR","BR_KATIHAR_KATIHAR","BR_KHAGARIA_KHAGARIA",
+        "BR_KISHANGANJ_KISHANGANJ","BR_LAKHISARAI_LAKHISARAI",
+        "BR_MADHEPURA_MADHEPURA","BR_MADHUBANI_MADHUBANI","BR_MUNGER_MUNGER",
+        "BR_NALANDA_NALANDA","BR_NAWADA_NAWADA","BR_PURNIA_PURNIA",
+        "BR_ROHTAS_ROHTAS","BR_SARAN_SARAN","BR_SHEIKHPURA_SHEIKHPURA",
+        "BR_SHEOHAR_SHEOHAR","BR_SITAMARHI_SITAMARHI","BR_SIWAN_SIWAN",
+        "BR_SUPAUL_SUPAUL","BR_VAISHALI_VAISHALI","BR_WEST_CHAMPARAN_WEST_CHAMPARAN",
+        # Jharkhand alternate
+        "JH_SERAIKELA",
+        # Odisha alternate
+        "OD_BOLANGIR","OD_DEOGARH",
+    ],
+    "Central_Alt": [
+        # MP alternate
+        "MP_NARMADAPURAM",
+    ],
+    "Northeast_Alt": [
+        # Arunachal alternate
+        "AR_KAMLE",
+        # Meghalaya alternate
+        "ML_EAST_KHASI",
+        # Sikkim new districts
+        "SK_PAKYONG","SK_SORENG",
     ],
 }
 
@@ -88,11 +323,16 @@ CROPS_DATA = [
         suitable_soil_textures=["Sandy", "Sandy-Loam", "Loam"],
         nutrient_requirements={"N": "Medium", "P": "Medium", "K": "Medium"},
         regional_suitability={
-            "PUNE": 0.85, "SOLAPUR": 0.90, "NASHIK": 0.80,
-            "AHMEDNAGAR": 0.85, "AURANGABAD": 0.88, "JALGAON": 0.75,
-            "SANGLI": 0.82, "KOLHAPUR": 0.70, "SATARA": 0.78, "LATUR": 0.90
+            **_zone_suitability(["North", "West", "Central", "South"]),
+            # Marathwada & Vidarbha — premium Bajra belt
+            "MH_SOLAPUR": 0.92, "MH_LATUR": 0.90, "MH_CHHATRAPATI_SAMBHAJINAGAR": 0.88,
+            "MH_AHMEDNAGAR": 0.86, "MH_PUNE": 0.85, "MH_SANGLI": 0.82,
+            "MH_NASHIK": 0.80, "MH_SATARA": 0.78, "MH_JALGAON": 0.76,
+            # North India Bajra belt
+            "RJ_JODHPUR": 0.90, "RJ_JAIPUR": 0.88, "RJ_BIKANER": 0.85,
+            "HR_HISAR": 0.88, "HR_BHIWANI": 0.85, "GJ_SABARKANTHA": 0.82,
         },
-        successful_regions=["SOLAPUR", "AURANGABAD", "LATUR", "AHMEDNAGAR"],
+        successful_regions=["MH_SOLAPUR", "MH_LATUR", "MH_CHHATRAPATI_SAMBHAJINAGAR", "MH_AHMEDNAGAR"],
         seasons=["Kharif"],
         varieties=["GHB-558", "GHB-732", "ICMH-356"],
         typical_yield_kg_per_ha=1500,
@@ -113,11 +353,16 @@ CROPS_DATA = [
         suitable_soil_textures=["Clay", "Clay-Loam", "Loam"],
         nutrient_requirements={"N": "Medium", "P": "Medium", "K": "Low"},
         regional_suitability={
-            "PUNE": 0.88, "SOLAPUR": 0.92, "NASHIK": 0.85,
-            "AHMEDNAGAR": 0.90, "AURANGABAD": 0.90, "JALGAON": 0.82,
-            "SANGLI": 0.88, "KOLHAPUR": 0.75, "SATARA": 0.85, "LATUR": 0.92
+            **_zone_suitability(["West", "Central", "South", "North"]),
+            # Premium Jowar belt — Marathwada & Deccan
+            "MH_SOLAPUR": 0.92, "MH_LATUR": 0.92, "MH_CHHATRAPATI_SAMBHAJINAGAR": 0.90,
+            "MH_AHMEDNAGAR": 0.90, "MH_PUNE": 0.88, "MH_SANGLI": 0.88,
+            "MH_SATARA": 0.85, "MH_NASHIK": 0.85, "MH_JALGAON": 0.82,
+            # Karnataka Jowar belt
+            "KA_KALABURAGI": 0.88, "KA_VIJAYAPURA": 0.86, "KA_RAICHUR": 0.84,
+            "KA_BALLARI": 0.82, "TS_NIZAMABAD": 0.80,
         },
-        successful_regions=["SOLAPUR", "AHMEDNAGAR", "AURANGABAD", "LATUR"],
+        successful_regions=["MH_SOLAPUR", "MH_AHMEDNAGAR", "MH_CHHATRAPATI_SAMBHAJINAGAR", "MH_LATUR"],
         seasons=["Kharif", "Rabi"],
         varieties=["CSH-16", "CSV-15", "M-35-1"],
         typical_yield_kg_per_ha=1800,
@@ -138,11 +383,16 @@ CROPS_DATA = [
         suitable_soil_textures=["Sandy-Loam", "Loam", "Clay-Loam"],
         nutrient_requirements={"N": "Medium", "P": "Medium", "K": "Medium"},
         regional_suitability={
-            "PUNE": 0.75, "SOLAPUR": 0.70, "NASHIK": 0.80,
-            "AHMEDNAGAR": 0.72, "AURANGABAD": 0.70, "JALGAON": 0.78,
-            "SANGLI": 0.75, "KOLHAPUR": 0.85, "SATARA": 0.82, "LATUR": 0.68
+            **_zone_suitability(["South", "West"]),
+            # Karnataka & TN — primary Ragi belt
+            "KA_BENGALURU": 0.90, "KA_MYSURU": 0.88, "KA_HASSAN": 0.88,
+            "KA_TUMKURU": 0.86, "KA_DAVANAGERE": 0.85, "KA_CHITRADURGA": 0.84,
+            "KA_MANDYA": 0.83, "TN_NAMAKKAL": 0.85, "TN_DHARMAPURI": 0.83,
+            # Maharashtra secondary Ragi belt
+            "MH_KOLHAPUR": 0.85, "MH_SATARA": 0.82, "MH_NASHIK": 0.80,
+            "MH_PUNE": 0.76, "MH_SANGLI": 0.76, "MH_SOLAPUR": 0.70,
         },
-        successful_regions=["KOLHAPUR", "SATARA", "NASHIK"],
+        successful_regions=["KA_BENGALURU", "KA_MYSURU", "MH_KOLHAPUR", "MH_SATARA"],
         seasons=["Kharif"],
         varieties=["GPU-28", "ML-365", "VL-149"],
         typical_yield_kg_per_ha=1200,
@@ -163,11 +413,14 @@ CROPS_DATA = [
         suitable_soil_textures=["Sandy", "Sandy-Loam", "Loam"],
         nutrient_requirements={"N": "Low", "P": "Low", "K": "Low"},
         regional_suitability={
-            "PUNE": 0.70, "SOLAPUR": 0.75, "NASHIK": 0.72,
-            "AHMEDNAGAR": 0.73, "AURANGABAD": 0.75, "JALGAON": 0.70,
-            "SANGLI": 0.72, "KOLHAPUR": 0.68, "SATARA": 0.70, "LATUR": 0.75
+            **_zone_suitability(["South", "Central", "West"]),
+            # Andhra & Telangana — primary Foxtail belt
+            "AP_ANANTAPUR": 0.88, "AP_KURNOOL": 0.85, "AP_PRAKASAM": 0.83,
+            "TS_NIZAMABAD": 0.85, "TS_MEDAK": 0.82, "TS_KARIMNAGAR": 0.80,
+            # Maharashtra secondary
+            "MH_SOLAPUR": 0.78, "MH_LATUR": 0.76, "MH_CHHATRAPATI_SAMBHAJINAGAR": 0.76,
         },
-        successful_regions=["SOLAPUR", "AURANGABAD", "LATUR"],
+        successful_regions=["AP_ANANTAPUR", "TS_NIZAMABAD", "MH_SOLAPUR", "MH_LATUR"],
         seasons=["Kharif"],
         varieties=["SiA-3156", "Prasad", "Lepakshi"],
         typical_yield_kg_per_ha=1000,
@@ -189,11 +442,16 @@ CROPS_DATA = [
         suitable_soil_textures=["Sandy-Loam", "Loam", "Clay-Loam"],
         nutrient_requirements={"N": "Low", "P": "Medium", "K": "Medium"},
         regional_suitability={
-            "PUNE": 0.82, "SOLAPUR": 0.85, "NASHIK": 0.80,
-            "AHMEDNAGAR": 0.83, "AURANGABAD": 0.85, "JALGAON": 0.82,
-            "SANGLI": 0.80, "KOLHAPUR": 0.75, "SATARA": 0.78, "LATUR": 0.85
+            **_zone_suitability(["West", "North", "South", "Central", "East"]),
+            # Marathwada — premium Moong belt
+            "MH_SOLAPUR": 0.88, "MH_LATUR": 0.86, "MH_CHHATRAPATI_SAMBHAJINAGAR": 0.86,
+            "MH_AHMEDNAGAR": 0.84, "MH_JALGAON": 0.83, "MH_PUNE": 0.82,
+            "MH_NASHIK": 0.80, "MH_SANGLI": 0.80, "MH_SATARA": 0.78,
+            # North India Moong belt
+            "RJ_JAIPUR": 0.86, "RJ_AJMER": 0.84, "MP_INDORE": 0.82,
+            "UP_AGRA": 0.80, "HR_HISAR": 0.80,
         },
-        successful_regions=["SOLAPUR", "AURANGABAD", "AHMEDNAGAR", "LATUR"],
+        successful_regions=["MH_SOLAPUR", "MH_LATUR", "MH_CHHATRAPATI_SAMBHAJINAGAR", "MH_AHMEDNAGAR"],
         seasons=["Kharif", "Rabi"],
         varieties=["Pusa-105", "SML-668", "IPM-02-3"],
         typical_yield_kg_per_ha=800,
@@ -214,11 +472,15 @@ CROPS_DATA = [
         suitable_soil_textures=["Loam", "Clay-Loam", "Sandy-Loam"],
         nutrient_requirements={"N": "Low", "P": "Medium", "K": "Medium"},
         regional_suitability={
-            "PUNE": 0.78, "SOLAPUR": 0.80, "NASHIK": 0.75,
-            "AHMEDNAGAR": 0.78, "AURANGABAD": 0.80, "JALGAON": 0.77,
-            "SANGLI": 0.75, "KOLHAPUR": 0.72, "SATARA": 0.75, "LATUR": 0.80
+            **_zone_suitability(["West", "South", "Central"]),
+            # Marathwada Urad belt
+            "MH_SOLAPUR": 0.82, "MH_LATUR": 0.82, "MH_CHHATRAPATI_SAMBHAJINAGAR": 0.80,
+            "MH_AHMEDNAGAR": 0.79, "MH_PUNE": 0.78, "MH_NASHIK": 0.76,
+            # Telangana & AP Urad belt
+            "TS_WARANGAL": 0.82, "TS_KARIMNAGAR": 0.80, "AP_KURNOOL": 0.80,
+            "AP_PRAKASAM": 0.78, "MP_INDORE": 0.78,
         },
-        successful_regions=["SOLAPUR", "AURANGABAD", "AHMEDNAGAR"],
+        successful_regions=["MH_SOLAPUR", "MH_LATUR", "TS_WARANGAL", "MH_CHHATRAPATI_SAMBHAJINAGAR"],
         seasons=["Kharif"],
         varieties=["TAU-1", "PU-31", "LBG-752"],
         typical_yield_kg_per_ha=700,
@@ -239,11 +501,15 @@ CROPS_DATA = [
         suitable_soil_textures=["Sandy", "Sandy-Loam", "Loam", "Clay-Loam"],
         nutrient_requirements={"N": "Low", "P": "Medium", "K": "Medium"},
         regional_suitability={
-            "PUNE": 0.80, "SOLAPUR": 0.82, "NASHIK": 0.78,
-            "AHMEDNAGAR": 0.80, "AURANGABAD": 0.82, "JALGAON": 0.80,
-            "SANGLI": 0.78, "KOLHAPUR": 0.75, "SATARA": 0.77, "LATUR": 0.82
+            **_zone_suitability(["South", "West", "Central"]),
+            # South India primary Cowpea belt
+            "KA_BENGALURU": 0.86, "KA_TUMKURU": 0.84, "TN_COIMBATORE": 0.86,
+            "TN_SALEM": 0.84, "AP_ANANTAPUR": 0.84, "TS_ADILABAD": 0.82,
+            # Maharashtra belt
+            "MH_SOLAPUR": 0.84, "MH_LATUR": 0.83, "MH_CHHATRAPATI_SAMBHAJINAGAR": 0.82,
+            "MH_JALGAON": 0.81, "MH_AHMEDNAGAR": 0.80,
         },
-        successful_regions=["SOLAPUR", "AURANGABAD", "JALGAON"],
+        successful_regions=["MH_SOLAPUR", "MH_LATUR", "MH_CHHATRAPATI_SAMBHAJINAGAR", "MH_JALGAON"],
         seasons=["Kharif"],
         varieties=["Pusa-578", "Arka-Garima", "Kashi-Kanchan"],
         typical_yield_kg_per_ha=900,
@@ -264,11 +530,18 @@ CROPS_DATA = [
         suitable_soil_textures=["Sandy", "Sandy-Loam", "Loam"],
         nutrient_requirements={"N": "Low", "P": "Medium", "K": "Medium"},
         regional_suitability={
-            "PUNE": 0.75, "SOLAPUR": 0.85, "NASHIK": 0.70,
-            "AHMEDNAGAR": 0.78, "AURANGABAD": 0.82, "JALGAON": 0.72,
-            "SANGLI": 0.75, "KOLHAPUR": 0.65, "SATARA": 0.70, "LATUR": 0.85
+            **_zone_suitability(["North", "West"]),
+            # Rajasthan — premier Guar belt
+            "RJ_JODHPUR": 0.92, "RJ_BIKANER": 0.90, "RJ_JAIPUR": 0.88,
+            "RJ_NAGAUR": 0.88, "RJ_BARMER": 0.86, "RJ_CHURU": 0.85,
+            "RJ_JAISALMER": 0.84,
+            # Haryana secondary Guar belt
+            "HR_HISAR": 0.86, "HR_SIRSA": 0.84, "HR_FATEHABAD": 0.82,
+            # Maharashtra drier zones
+            "MH_SOLAPUR": 0.85, "MH_LATUR": 0.85, "MH_CHHATRAPATI_SAMBHAJINAGAR": 0.82,
+            "MH_AHMEDNAGAR": 0.78,
         },
-        successful_regions=["SOLAPUR", "AURANGABAD", "LATUR"],
+        successful_regions=["RJ_JODHPUR", "RJ_BIKANER", "MH_SOLAPUR", "MH_LATUR"],
         seasons=["Kharif"],
         varieties=["RGC-1066", "HG-563", "Pusa-Navbahar"],
         typical_yield_kg_per_ha=1200,
@@ -290,11 +563,16 @@ CROPS_DATA = [
         suitable_soil_textures=["Sandy-Loam", "Loam", "Clay-Loam"],
         nutrient_requirements={"N": "Medium", "P": "Medium", "K": "Medium"},
         regional_suitability={
-            "PUNE": 0.75, "SOLAPUR": 0.78, "NASHIK": 0.72,
-            "AHMEDNAGAR": 0.75, "AURANGABAD": 0.77, "JALGAON": 0.73,
-            "SANGLI": 0.75, "KOLHAPUR": 0.70, "SATARA": 0.72, "LATUR": 0.78
+            **_zone_suitability(["West", "South", "Central"]),
+            # Gujarat & Rajasthan — primary Sesame belt
+            "GJ_JUNAGADH": 0.88, "GJ_RAJKOT": 0.86, "GJ_SURENDRANAGAR": 0.85,
+            "RJ_BARMER": 0.86, "RJ_JODHPUR": 0.84,
+            # Andhra & Maharashtra secondary
+            "AP_GUNTUR": 0.84, "AP_KURNOOL": 0.82, "TS_NIZAMABAD": 0.80,
+            "MH_SOLAPUR": 0.80, "MH_LATUR": 0.79, "MH_CHHATRAPATI_SAMBHAJINAGAR": 0.78,
+            "MH_AHMEDNAGAR": 0.76,
         },
-        successful_regions=["SOLAPUR", "AURANGABAD", "AHMEDNAGAR"],
+        successful_regions=["GJ_JUNAGADH", "MH_SOLAPUR", "MH_LATUR", "MH_CHHATRAPATI_SAMBHAJINAGAR"],
         seasons=["Kharif", "Rabi"],
         varieties=["Phule-Til", "N-32", "TKG-22"],
         typical_yield_kg_per_ha=600,
@@ -315,11 +593,16 @@ CROPS_DATA = [
         suitable_soil_textures=["Loam", "Clay-Loam", "Sandy-Loam"],
         nutrient_requirements={"N": "High", "P": "High", "K": "High"},
         regional_suitability={
-            "PUNE": 0.80, "SOLAPUR": 0.75, "NASHIK": 0.82,
-            "AHMEDNAGAR": 0.80, "AURANGABAD": 0.75, "JALGAON": 0.80,
-            "SANGLI": 0.78, "KOLHAPUR": 0.82, "SATARA": 0.80, "LATUR": 0.73
+            **_zone_suitability(["South", "West", "Central"]),
+            # Karnataka — premier Sunflower belt
+            "KA_BALLARI": 0.90, "KA_RAICHUR": 0.88, "KA_KOPPAL": 0.88,
+            "KA_DAVANAGERE": 0.87, "KA_HAVERI": 0.86, "KA_GADAG": 0.85,
+            "KA_DHARWAD": 0.84, "KA_CHITRADURGA": 0.84,
+            # Maharashtra secondary
+            "MH_NASHIK": 0.83, "MH_KOLHAPUR": 0.82, "MH_SATARA": 0.81,
+            "MH_PUNE": 0.80, "MH_AHMEDNAGAR": 0.80, "MH_JALGAON": 0.79,
         },
-        successful_regions=["PUNE", "NASHIK", "KOLHAPUR", "SATARA"],
+        successful_regions=["KA_BALLARI", "KA_DHARWAD", "MH_NASHIK", "MH_KOLHAPUR"],
         seasons=["Kharif", "Rabi"],
         varieties=["KBSH-44", "Phule-Bhaskar", "DRSH-1"],
         typical_yield_kg_per_ha=1500,
@@ -340,11 +623,16 @@ CROPS_DATA = [
         suitable_soil_textures=["Loam", "Clay-Loam", "Sandy-Loam"],
         nutrient_requirements={"N": "Low", "P": "High", "K": "High"},
         regional_suitability={
-            "PUNE": 0.78, "SOLAPUR": 0.72, "NASHIK": 0.80,
-            "AHMEDNAGAR": 0.77, "AURANGABAD": 0.73, "JALGAON": 0.82,
-            "SANGLI": 0.75, "KOLHAPUR": 0.80, "SATARA": 0.78, "LATUR": 0.70
+            **_zone_suitability(["West", "Central"]),
+            # Madhya Pradesh — India's Soybean capital
+            "MP_INDORE": 0.92, "MP_UJJAIN": 0.90, "MP_DEWAS": 0.90,
+            "MP_SEHORE": 0.88, "MP_BHOPAL": 0.87, "MP_HOSHANGABAD": 0.87,
+            "MP_RAISEN": 0.86, "MP_SHAJAPUR": 0.85, "MP_MANDSAUR": 0.84,
+            # Maharashtra Soybean belt
+            "MH_JALGAON": 0.84, "MH_NASHIK": 0.82, "MH_KOLHAPUR": 0.82,
+            "MH_AHMEDNAGAR": 0.80, "MH_SATARA": 0.80, "MH_PUNE": 0.79,
         },
-        successful_regions=["JALGAON", "NASHIK", "KOLHAPUR"],
+        successful_regions=["MP_INDORE", "MP_UJJAIN", "MH_JALGAON", "MH_NASHIK"],
         seasons=["Kharif"],
         varieties=["JS-335", "MAUS-71", "Phule-Kalyani"],
         typical_yield_kg_per_ha=1800,
@@ -366,11 +654,18 @@ CROPS_DATA = [
         suitable_soil_textures=["Loam", "Sandy-Loam", "Clay-Loam"],
         nutrient_requirements={"N": "High", "P": "High", "K": "High"},
         regional_suitability={
-            "PUNE": 0.85, "SOLAPUR": 0.70, "NASHIK": 0.88,
-            "AHMEDNAGAR": 0.80, "AURANGABAD": 0.72, "JALGAON": 0.82,
-            "SANGLI": 0.78, "KOLHAPUR": 0.85, "SATARA": 0.83, "LATUR": 0.68
+            **_zone_suitability(["South", "West", "North", "Central", "East"]),
+            # Maharashtra premier Tomato belt
+            "MH_NASHIK": 0.92, "MH_PUNE": 0.88, "MH_SATARA": 0.86,
+            "MH_KOLHAPUR": 0.88, "MH_AHMEDNAGAR": 0.84, "MH_JALGAON": 0.83,
+            "MH_SANGLI": 0.80,
+            # South India Tomato belt
+            "KA_KOLAR": 0.90, "KA_CHIKKABALLAPURA": 0.88, "KA_BENGALURU_RURAL": 0.87,
+            "AP_CHITTOOR": 0.88, "AP_KURNOOL": 0.85,
+            # North India Tomato belt
+            "HR_KARNAL": 0.85, "UP_AGRA": 0.82, "PB_LUDHIANA": 0.82,
         },
-        successful_regions=["PUNE", "NASHIK", "KOLHAPUR", "SATARA"],
+        successful_regions=["MH_NASHIK", "MH_PUNE", "MH_KOLHAPUR", "KA_KOLAR"],
         seasons=["Kharif", "Rabi"],
         varieties=["Abhinav", "Pusa-Ruby", "Arka-Vikas"],
         typical_yield_kg_per_ha=25000,
@@ -391,11 +686,16 @@ CROPS_DATA = [
         suitable_soil_textures=["Loam", "Sandy-Loam", "Clay-Loam"],
         nutrient_requirements={"N": "High", "P": "High", "K": "High"},
         regional_suitability={
-            "PUNE": 0.82, "SOLAPUR": 0.75, "NASHIK": 0.85,
-            "AHMEDNAGAR": 0.80, "AURANGABAD": 0.75, "JALGAON": 0.82,
-            "SANGLI": 0.80, "KOLHAPUR": 0.85, "SATARA": 0.82, "LATUR": 0.72
+            **_zone_suitability(["South", "West", "East", "Central"]),
+            # Maharashtra Brinjal belt
+            "MH_NASHIK": 0.88, "MH_KOLHAPUR": 0.87, "MH_SATARA": 0.85,
+            "MH_PUNE": 0.84, "MH_JALGAON": 0.83, "MH_AHMEDNAGAR": 0.81,
+            "MH_SANGLI": 0.81,
+            # South India Brinjal belt
+            "KA_BENGALURU": 0.88, "KA_TUMKURU": 0.85, "AP_GUNTUR": 0.86,
+            "TN_COIMBATORE": 0.85, "WB_BURDWAN": 0.84, "WB_NADIA": 0.82,
         },
-        successful_regions=["PUNE", "NASHIK", "KOLHAPUR", "SATARA"],
+        successful_regions=["MH_NASHIK", "MH_KOLHAPUR", "KA_BENGALURU", "AP_GUNTUR"],
         seasons=["Kharif", "Rabi"],
         varieties=["Pusa-Purple-Long", "Arka-Shirish", "Phule-Prakash"],
         typical_yield_kg_per_ha=20000,
@@ -416,11 +716,18 @@ CROPS_DATA = [
         suitable_soil_textures=["Loam", "Sandy-Loam", "Clay-Loam"],
         nutrient_requirements={"N": "High", "P": "Medium", "K": "Medium"},
         regional_suitability={
-            "PUNE": 0.80, "SOLAPUR": 0.78, "NASHIK": 0.82,
-            "AHMEDNAGAR": 0.80, "AURANGABAD": 0.78, "JALGAON": 0.82,
-            "SANGLI": 0.80, "KOLHAPUR": 0.82, "SATARA": 0.80, "LATUR": 0.75
+            **_zone_suitability(["South", "West", "Central", "North", "East"]),
+            # Maharashtra Okra belt
+            "MH_NASHIK": 0.85, "MH_JALGAON": 0.84, "MH_PUNE": 0.82,
+            "MH_KOLHAPUR": 0.83, "MH_AHMEDNAGAR": 0.81, "MH_SATARA": 0.81,
+            "MH_SOLAPUR": 0.79,
+            # South India Okra belt
+            "KA_BENGALURU": 0.86, "KA_TUMKURU": 0.84, "AP_GUNTUR": 0.85,
+            "TN_COIMBATORE": 0.86, "TN_ERODE": 0.84,
+            # North India Okra belt
+            "UP_LUCKNOW": 0.82, "UP_AGRA": 0.80, "HR_KARNAL": 0.82,
         },
-        successful_regions=["PUNE", "NASHIK", "JALGAON", "KOLHAPUR"],
+        successful_regions=["MH_NASHIK", "MH_JALGAON", "MH_KOLHAPUR", "KA_BENGALURU"],
         seasons=["Kharif", "Rabi"],
         varieties=["Pusa-Sawani", "Arka-Anamika", "Phule-Utkarsha"],
         typical_yield_kg_per_ha=12000,
@@ -441,11 +748,16 @@ CROPS_DATA = [
         suitable_soil_textures=["Loam", "Sandy-Loam", "Clay-Loam"],
         nutrient_requirements={"N": "High", "P": "Medium", "K": "Medium"},
         regional_suitability={
-            "PUNE": 0.78, "SOLAPUR": 0.72, "NASHIK": 0.80,
-            "AHMEDNAGAR": 0.77, "AURANGABAD": 0.73, "JALGAON": 0.80,
-            "SANGLI": 0.75, "KOLHAPUR": 0.80, "SATARA": 0.78, "LATUR": 0.70
+            **_zone_suitability(["North", "West", "Central", "East", "South"]),
+            # Maharashtra Bottle Gourd belt
+            "MH_NASHIK": 0.83, "MH_JALGAON": 0.82, "MH_PUNE": 0.80,
+            "MH_KOLHAPUR": 0.82, "MH_AHMEDNAGAR": 0.79, "MH_SATARA": 0.80,
+            # North India Bottle Gourd belt
+            "UP_LUCKNOW": 0.84, "UP_AGRA": 0.82, "UP_VARANASI": 0.82,
+            "HR_KARNAL": 0.83, "HR_KURUKSHETRA": 0.82,
+            "PB_LUDHIANA": 0.82, "RJ_JAIPUR": 0.80,
         },
-        successful_regions=["PUNE", "NASHIK", "JALGAON", "KOLHAPUR"],
+        successful_regions=["MH_NASHIK", "MH_JALGAON", "UP_LUCKNOW", "HR_KARNAL"],
         seasons=["Kharif", "Rabi"],
         varieties=["Pusa-Summer-Prolific-Long", "Arka-Bahar", "Samrat"],
         typical_yield_kg_per_ha=18000,

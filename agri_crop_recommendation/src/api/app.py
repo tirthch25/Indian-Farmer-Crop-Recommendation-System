@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -6,6 +7,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 from starlette.requests import Request
+from dotenv import load_dotenv
+load_dotenv()
 
 from src.weather.fetcher import fetch_weather
 from src.ml.pipeline import add_agri_features
@@ -18,12 +21,28 @@ from src.services.risk import RiskAssessmentEngine
 from src.services.pests import PestWarningSystem
 from src.services.calendar import PlantingCalendar
 
+# LLM Explainer (optional — graceful fallback if unavailable)
+try:
+    from src.services.llm_explainer import generate_bulk_explanations
+    _LLM_EXPLAINER_AVAILABLE = True
+except ImportError:
+    _LLM_EXPLAINER_AVAILABLE = False
+    generate_bulk_explanations = None
+
+# LLM Chat (optional — graceful fallback if unavailable)
+try:
+    from src.services.llm_chat import answer_farmer_question
+    _LLM_CHAT_AVAILABLE = True
+except ImportError:
+    _LLM_CHAT_AVAILABLE = False
+    answer_farmer_question = None
+
 app = FastAPI(
-    title="Indian Farmer Crop Recommendation API",
+    title="Indian Farmer Crop Recommendation API v2",
     description="ML-powered crop recommendation system with weather forecasting (LSTM + XGBoost), "
                 "crop suitability prediction (Random Forest), risk assessment, pest warnings, "
-                "and planting calendar for Indian farmers.",
-    version="1.0"
+                "planting calendar, and Gemini LLM regional filtering + AI explanations for Indian farmers.",
+    version="2.0"
 )
 
 # Mount static files
@@ -63,6 +82,12 @@ class RiskRequest(BaseModel):
     crop_id: str = Field(..., description="Crop ID (e.g., BAJRA_01)")
     season: Optional[str] = Field(None, description="Season (auto-detected if not provided)")
     irrigation: str = Field("Limited", description="Irrigation: None, Limited, Full")
+
+
+class ChatRequest(BaseModel):
+    question: str = Field(..., description="Farmer's question in English or Hindi")
+    region_id: Optional[str] = Field("", description="Region ID for context (e.g., MH_PUNE)")
+    season: Optional[str] = Field("", description="Current season for context")
 
 
 # ----------- Helper Functions -----------
@@ -123,7 +148,6 @@ async def favicon():
 @app.get("/health")
 def health_check():
     """Health check endpoint."""
-    # Check ML model availability
     ml_status = {}
     try:
         from src.ml.predictor import CropSuitabilityRF
@@ -131,12 +155,17 @@ def health_check():
         ml_status['crop_suitability_rf'] = 'loaded' if rf_model else 'not_trained'
     except Exception:
         ml_status['crop_suitability_rf'] = 'not_available'
-    
+
+    # Check LLM availability
+    llm_available = bool(os.getenv("GEMINI_API_KEY"))
+
     return {
         "status": "healthy",
-        "version": "1.0",
+        "version": "2.0",
         "regions_loaded": len(region_manager.get_all_regions()),
         "ml_models": ml_status,
+        "llm_available": llm_available,
+        "llm_model": "gemini-2.0-flash-lite" if llm_available else None,
         "timestamp": datetime.now().isoformat()
     }
 
@@ -261,6 +290,27 @@ def recommend(request: RegionRequest):
         
         # 8. Generate planting calendars for top crops
         calendars = planting_calendar.get_multiple_calendars(crops[:10], season)
+
+        # 8b. LLM Explanation — enrich top 3 crops with farmer-friendly reasoning
+        llm_powered = False
+        if _LLM_EXPLAINER_AVAILABLE and crops:
+            try:
+                avg_temp_val = float(weather['temp_avg'].mean()) if 'temp_avg' in weather.columns \
+                    else float((weather['temp_max'].mean() + weather['temp_min'].mean()) / 2)
+                crops = generate_bulk_explanations(
+                    crops=crops,
+                    region_name=region.name,
+                    region_id=region.region_id,
+                    season=season,
+                    avg_temp=avg_temp_val,
+                    expected_rainfall=float(forecast.get('expected_rainfall_mm', 0)),
+                    soil_texture=soil.texture,
+                    soil_ph=soil.ph,
+                    top_n=3,
+                )
+                llm_powered = True
+            except Exception as _llm_e:
+                pass  # Silently skip — explanations are bonus, not critical
         
         # 9. Build month-wise forecast from historical zone data (Jan–Dec)
         MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
@@ -307,7 +357,9 @@ def recommend(request: RegionRequest):
             "medium_range_forecast": forecast,
             "recommended_crops": crops[:10],
             "planting_calendars": calendars,
-            "total_crops_analyzed": len(crops)
+            "total_crops_analyzed": len(crops),
+            "llm_powered": llm_powered,
+            "llm_note": "Top 3 crops include AI-generated explanations" if llm_powered else "Rule-based scoring only"
         }
     
     except HTTPException:
@@ -498,3 +550,52 @@ def get_planting_calendar_endpoint(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Calendar error: {str(e)}")
+
+
+# ----------- LLM Chat Endpoint -----------
+
+@app.post("/chat")
+def farmer_chat(request: ChatRequest):
+    """
+    Answer a farmer's free-form question using Gemini LLM.
+
+    Accepts any farming-related question and returns a concise,
+    region-aware answer. Falls back gracefully if LLM unavailable.
+    """
+    try:
+        if not _LLM_CHAT_AVAILABLE or answer_farmer_question is None:
+            return {
+                "answer": (
+                    "AI chat requires the Gemini API. Please add GEMINI_API_KEY to your .env file. "
+                    "All crop recommendation features work without it."
+                ),
+                "llm_available": False
+            }
+
+        # Resolve region name for richer context
+        region_name = ""
+        if request.region_id:
+            try:
+                robj = region_manager.get_region_profile(request.region_id.upper())
+                region_name = robj.name if robj else request.region_id
+            except Exception:
+                region_name = request.region_id
+
+        answer = answer_farmer_question(
+            question=request.question,
+            region_id=request.region_id or "",
+            region_name=region_name,
+            season=request.season or "",
+        )
+
+        return {
+            "answer": answer,
+            "llm_available": True,
+            "region_context": region_name or request.region_id or "General",
+            "season_context": request.season or "General"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Chat error: {str(e)}")
