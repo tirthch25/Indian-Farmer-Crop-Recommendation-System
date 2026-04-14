@@ -39,9 +39,9 @@ except ImportError:
 
 app = FastAPI(
     title="Indian Farmer Crop Recommendation API v2",
-    description="ML-powered crop recommendation system with weather forecasting (LSTM + XGBoost), "
-                "crop suitability prediction (Random Forest), risk assessment, pest warnings, "
-                "planting calendar, and Gemini LLM regional filtering + AI explanations for Indian farmers.",
+    description="ML-powered crop recommendation with LSTM + XGBoost weather, Random Forest suitability, "
+                "risk assessment, pest warnings, planting calendar, and Gemini LLM regional filtering + "
+                "AI explanations for Indian farmers.",
     version="2.0"
 )
 
@@ -225,7 +225,7 @@ def recommend(request: RegionRequest):
         
         # 4. Medium-range forecast (ML-enhanced)
         forecast = forecast_days_17_90(weather, request.planning_days, region_id=region.region_id)
-        
+
         # 5. Determine irrigation
         irrigation_map = {"None": False, "Limited": True, "Full": True}
         irrigation_available = irrigation_map.get(request.irrigation, True)
@@ -237,7 +237,7 @@ def recommend(request: RegionRequest):
             region_id=region.region_id,
             soil=soil,
             irrigation_available=irrigation_available,
-            planning_days=request.planning_days
+            planning_days=request.planning_days,
         )
         
         # 7. Add risk assessment and pest warnings to each crop

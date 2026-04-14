@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 _ml_model_cache = None
 
 
+
 def _get_regional_score(crop, region_id: str) -> float:
     """
     Look up regional suitability score for a crop.
@@ -122,7 +123,7 @@ def recommend_crops(
     region_id: Optional[str] = None,
     soil: Optional[SoilInfo] = None,
     irrigation_available: bool = True,
-    planning_days: int = 90
+    planning_days: int = 90,
 ) -> List[Dict]:
     """
     Generate crop recommendations based on weather, soil, and regional data.
@@ -290,7 +291,7 @@ def recommend_crops(
         
         # Determine risk
         risk = determine_risk_level(crop, max_dry_spell, water_available)
-        
+
         recommendations.append({
             "crop": crop.common_name,
             "crop_id": crop.crop_id,
@@ -306,7 +307,7 @@ def recommend_crops(
             "duration_range": list(crop.duration_range) if crop.duration_range else [crop.duration_days, crop.duration_days],
             "risk_note": risk,
             "drought_tolerance": crop.drought_tolerance,
-            "regional_suitability": _get_regional_score(crop, region_id)
+            "regional_suitability": _get_regional_score(crop, region_id),
         })
     
     # Sort by suitability score

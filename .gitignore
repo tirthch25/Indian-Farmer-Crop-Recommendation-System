@@ -25,6 +25,9 @@ env/
 # District historical weather parquet files (~1.8 GB total)
 agri_crop_recommendation/data/weather/district/
 
+# Large ML training data files (>100 MB, excluded from GitHub)
+agri_crop_recommendation/data/ml/training/crop_suitability/crop_suitability_data.csv
+
 # Jupyter
 *.ipynb_checkpoints/
 

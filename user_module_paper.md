@@ -1,11 +1,11 @@
 # User Module Paper
-## Indian Farmer Crop Recommendation System — v1.0
+## Indian Farmer Crop Recommendation System — v3.0
 
 **Document Type:** User Module Paper  
 **Project:** Indian Farmer Crop Recommendation System  
-**Version:** 1.0  
-**Prepared By:** HPC Group,CDAC-Pune 
-**Date:** March 2026  
+**Version:** 3.0  
+**Prepared By:** HPC Group, CDAC-Pune  
+**Date:** April 2026  
 **Platform:** Web Application (FastAPI + HTML/JS)  
 **Access URL:** `http://localhost:8000`
 
@@ -20,17 +20,19 @@
 5. [Module 3 — Crop Recommendation Engine](#5-module-3--crop-recommendation-engine)
 6. [Module 4 — ML Weather Forecasting (LSTM + XGBoost)](#6-module-4--ml-weather-forecasting-lstm--xgboost)
 7. [Module 5 — Crop Suitability ML Model (Random Forest)](#7-module-5--crop-suitability-ml-model-random-forest)
-8. [Module 6 — Risk Assessment Engine](#8-module-6--risk-assessment-engine)
-9. [Module 7 — Pest & Disease Warning System](#9-module-7--pest--disease-warning-system)
-10. [Module 8 — Planting Calendar](#10-module-8--planting-calendar)
-11. [Module 9 — Crop Knowledge Base](#11-module-9--crop-knowledge-base)
-12. [Module 10 — Regional Data & Soil Information](#12-module-10--regional-data--soil-information)
-13. [Module 11 — Historical Weather Data Pipeline](#13-module-11--historical-weather-data-pipeline)
-14. [Data Flow Diagram](#14-data-flow-diagram)
-15. [API Reference Summary](#15-api-reference-summary)
-16. [Technology Stack](#16-technology-stack)
-17. [Directory Structure](#17-directory-structure)
-18. [System Limitations & Future Scope](#18-system-limitations--future-scope)
+8. [Module 6 — Crop Yield Prediction (XGBoost)](#8-module-6--crop-yield-prediction-xgboost-new-in-v30)
+9. [Module 7 — Satellite NDVI & Soil Moisture](#9-module-7--satellite-ndvi--soil-moisture-new-in-v30)
+10. [Module 8 — Risk Assessment Engine](#10-module-8--risk-assessment-engine)
+11. [Module 9 — Pest & Disease Warning System](#11-module-9--pest--disease-warning-system)
+12. [Module 10 — Planting Calendar](#12-module-10--planting-calendar)
+13. [Module 11 — Crop Knowledge Base](#13-module-11--crop-knowledge-base)
+14. [Module 12 — Regional Data & Soil Information](#14-module-12--regional-data--soil-information)
+15. [Module 13 — Historical Weather Data Pipeline](#15-module-13--historical-weather-data-pipeline)
+16. [Data Flow Diagram](#16-data-flow-diagram)
+17. [API Reference Summary](#17-api-reference-summary)
+18. [Technology Stack](#18-technology-stack)
+19. [Directory Structure](#19-directory-structure)
+20. [System Limitations & Future Scope](#20-system-limitations--future-scope)
 
 ---
 
@@ -56,8 +58,10 @@ The **Indian Farmer Crop Recommendation System** is an AI-powered agricultural a
 | **States Covered** | 34 States & Union Territories |
 | **Crops in Database** | 50+ short-duration crops (15–90 days) |
 | **Historical Weather Records** | ~40,180 records spanning 10+ years |
-| **ML Models** | 3 (LSTM, XGBoost, Random Forest) |
-| **API Version** | v1.0 |
+| **ML Models** | 5 (LSTM, XGBoost Weather ×3, Random Forest, XGBoost Yield) |
+| **Yield Model R²** | 0.984 (XGBoost, 18,400 training scenarios) |
+| **Satellite Data Sources** | NASA POWER AG + Open-Meteo (no API key) |
+| **API Version** | v3.0 |
 
 ---
 
@@ -105,9 +109,13 @@ User Input → POST /recommend
     ↓
 5. ML Forecast (LSTM + XGBoost ensemble, up to 90 days)
     ↓
+5b. Fetch Satellite Data (NASA POWER NDVI + Open-Meteo soil moisture) ← NEW
+    ↓
 6. Determine Soil (user-provided or region default)
     ↓
 7. Score Crops (Random Forest ML + Rule-Based, blended 60:40)
+    ↓
+7b. Predict Yield per Crop (XGBoost Yield Predictor, q/ha) ← NEW
     ↓
 8. Risk Assessment per Crop
     ↓
@@ -115,7 +123,7 @@ User Input → POST /recommend
     ↓
 10. Generate Planting Calendars
     ↓
-JSON Response → Frontend renders UI
+JSON Response → Frontend renders UI (yield badge + NDVI chart)
 ```
 
 ---
@@ -136,10 +144,12 @@ Provides a single-page web application that allows farmers (or agricultural advi
 | **Overview Cards** | `#overview` | Summary stats (region, season, temp, rain, soil, forecast source) |
 | **Season Guidance** | `#guidance-section` | Contextual planting guidance |
 | **Weather Chart** | `#forecast-section` | 12-month weather chart (Chart.js) |
-| **Recommended Crops** | `#crops-section` | Top 10 crop cards with suitability scores |
+| **Satellite Intelligence** | `#satellite-section` | NDVI trend chart + soil moisture stats *(v3.0)* |
+| **Recommended Crops** | `#crops-section` | Top 10 crop cards with suitability scores + **yield badges** *(v3.0)* |
 | **Risk Assessment** | `#risk-section` | Risk breakdown per crop |
 | **Pest/Disease Alerts** | `#pest-section` | Active pest/disease warnings |
 | **Planting Calendar** | `#calendar-section` | Timeline milestones per crop |
+| **AI Farming Chat** | `#chat-section` | Gemini-powered Q&A for farmers |
 
 ### 3.3 Input Form Fields
 
@@ -183,11 +193,13 @@ Provides a single-page web application that allows farmers (or agricultural advi
 | `GET` | `/` | Serve the web interface (HTML) |
 | `GET` | `/health` | System health check |
 | `GET` | `/regions` | List all 640+ supported regions |
-| `POST` | `/recommend` | **Main endpoint** — Generate crop recommendations |
+| `POST` | `/recommend` | **Main endpoint** — Generate crop recommendations (+ yield) |
+| `GET` | `/satellite/{region_id}` | **NEW** — Satellite NDVI + soil moisture for a district |
 | `GET` | `/forecast/{region_id}` | Get ML weather forecast for a region |
 | `POST` | `/risk-assessment` | Get detailed risk assessment for a crop |
 | `GET` | `/pest-warnings/{region_id}` | Get pest/disease warnings for a region |
 | `GET` | `/planting-calendar/{crop_id}` | Get planting calendar for a crop |
+| `POST` | `/chat` | AI farming Q&A powered by Gemini LLM |
 
 ### 4.2 POST /recommend — Request Schema
 

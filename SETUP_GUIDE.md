@@ -14,7 +14,7 @@
 5. [Install Dependencies](#5-install-dependencies)
 6. [Run the Application](#6-run-the-application)
 7. [(Optional) Fetch District Weather Data](#7-optional-fetch-district-weather-data)
-8. [(Optional) Train the ML Models](#8-optional-train-the-ml-models)
+8. [(Optional) Train the Weather &amp; Suitability Models](#8-optional-train-the-weather--suitability-models)
 9. [Using the Web Interface](#9-using-the-web-interface)
 10. [Using the API](#10-using-the-api)
 11. [Troubleshooting](#11-troubleshooting)
@@ -31,11 +31,11 @@ Before you start, make sure your computer meets these requirements:
 | **OS**     | Windows 10 / macOS 11 / Ubuntu 20.04 | Windows 11 / macOS 13 / Ubuntu 22.04 |
 | **Python** | 3.8+                          | 3.10 or 3.11                  |
 | **RAM**    | 4 GB                          | 8 GB (needed if training LSTM/XGBoost) |
-| **Storage**| 1 GB free                     | 2 GB free (with full weather data) |
-| **Internet**| Required (for weather data)  | Stable broadband               |
+| **Storage**| 1.5 GB free                   | 2.5 GB free (with full weather data) |
+| **Internet**| Required (weather data)  | Stable broadband               |
 | **Browser**| Chrome / Firefox / Edge / Safari (latest) | Any modern browser |
 
-> ✅ **No API keys needed.** The app fetches weather from [Open-Meteo](https://open-meteo.com/) for free.
+> ✅ **No API keys needed for core features.** Weather data is fetched free from [Open-Meteo](https://open-meteo.com/).
 
 ---
 
@@ -140,20 +140,21 @@ pip install -r requirements.txt
 
 This installs all required packages:
 
-| Package          | Purpose                                   |
-|-----------------|-------------------------------------------|
-| `fastapi`        | Web API framework                         |
-| `uvicorn`        | ASGI web server                           |
-| `torch`          | PyTorch — LSTM weather forecasting        |
-| `xgboost`        | XGBoost — weather forecasting             |
-| `scikit-learn`   | Random Forest — crop suitability          |
-| `pandas`         | Data processing                           |
-| `numpy`          | Numerical computing                       |
-| `requests`       | HTTP calls to weather API                 |
-| `jinja2`         | Web template rendering                    |
-| `pyarrow`        | Parquet file support (weather data)       |
-| `joblib`         | Model serialization                       |
-| `matplotlib`     | Plotting (used during training)           |
+| Package          | Purpose                                             |
+|-----------------|-----------------------------------------------------|
+| `fastapi`        | Web API framework                                   |
+| `uvicorn`        | ASGI web server                                     |
+| `torch`          | PyTorch — LSTM weather forecasting                  |
+| `xgboost`        | XGBoost — weather forecasting                   |
+| `scikit-learn`   | Random Forest — crop suitability                    |
+| `pandas`         | Data processing                                     |
+| `numpy`          | Numerical computing                                 |
+| `requests`       | HTTP calls to weather + NASA POWER APIs             |
+| `jinja2`         | Web template rendering                              |
+| `pyarrow`        | Parquet file support (weather data)                 |
+| `joblib`         | Model serialization                                 |
+| `matplotlib`     | Plotting (used during training)                     |
+| `google-genai`   | Google Gemini LLM API *(optional)*                  |
 
 > ⏳ Installation may take **3–10 minutes** as PyTorch is a large package (~700 MB).
 
@@ -213,7 +214,7 @@ python scripts/fetch_district_weather.py
 
 ---
 
-## 8. (Optional) Train the ML Models
+## 8. (Optional) Train the Weather & Suitability Models
 
 > ⚠️ **This step is optional.** The app works perfectly without it — it falls back to rule-based scoring automatically. Train only if you want full ML-enhanced predictions.
 
@@ -431,10 +432,12 @@ Then open `http://localhost:8000/health` in your browser. You should see:
 ```json
 {
   "status": "healthy",
-  "version": "1.0",
+  "version": "2.0",
   "regions_loaded": 640,
   "ml_models": {
-    "crop_suitability_rf": "loaded"
+    "crop_suitability_rf": "loaded",
+    "weather_lstm": "loaded",
+    "weather_xgboost": "loaded"
   }
 }
 ```
@@ -521,8 +524,9 @@ curl -X POST http://localhost:8000/recommend \
 | `POST` | `/recommend`                         | Get top 10 crop recommendations              |
 | `GET`  | `/forecast/{region_id}?days=7`       | ML weather forecast for a region             |
 | `POST` | `/risk-assessment`                   | Drought/temperature/event risk for a crop    |
-| `GET`  | `/pest-warnings/{region_id}`         | Pest & disease warnings for a region         |
+| `GET`  | `/pest-warnings/{region_id}`         | Pest &amp; disease warnings for a region         |
 | `GET`  | `/planting-calendar/{crop_id}`       | Sowing-to-harvest calendar for a crop        |
+| `POST` | `/chat`                              | AI farming Q&amp;A chat (Gemini LLM)             |
 | `GET`  | `/regions`                           | List all 640+ supported regions              |
 | `GET`  | `/health`                            | API health check + ML model status           |
 | `GET`  | `/docs`                              | Swagger interactive API explorer             |
@@ -584,10 +588,12 @@ Indian-Farmer-Crop-Recommendation-System/
     ├── src/                           ← Core source code
     │   ├── api/app.py                 ← FastAPI routes & endpoints
     │   ├── crops/                     ← Crop database & soil models
-    │   ├── ml/                        ← LSTM, XGBoost, Random Forest
-    │   ├── services/                  ← Recommender, risk, pest, calendar
-    │   ├── utils/                     ← Region manager, season detection
-    │   └── weather/                   ← Open-Meteo fetcher & forecast engine
+    │   ├── ml/                        ─ LSTM, XGBoost, Random Forest
+    │   ├── services/                  ─ Recommender, risk, pest, calendar, LLM
+    │   ├── utils/                     ─ Region manager, season detection
+    │   └── weather/
+    │       ├── fetcher.py             ─ Open-Meteo real-time weather
+    │       └── forecast.py            ─ ML forecast engine
     │
     ├── data/
     │   ├── reference/                 ← regions.json, crop_knowledge.json
@@ -595,20 +601,20 @@ Indian-Farmer-Crop-Recommendation-System/
     │       ├── zone/                  ← Zone-level monthly climate normals (CSV)
     │       └── district/              ← District-level daily weather (Parquet, after Step 7)
     │
-    ├── models/                        ← Trained ML model files (after Step 8)
-    │   ├── crop_suitability/          ← Random Forest (rf_model.joblib)
-    │   ├── weather_lstm/              ← LSTM weights (lstm_weights.pt)
-    │   └── weather_xgboost/           ← XGBoost models (temp/rainfall .joblib)
+    ├── models/                        ─ Trained ML model files
+    │   ├── crop_suitability/          ─ Random Forest (rf_model.joblib)
+    │   ├── weather_lstm/              ─ LSTM weights (lstm_weights.pt)
+    │   └── weather_xgboost/           ─ XGBoost models (temp/rainfall .joblib)
     │
-    ├── templates/index.html           ← Web UI (bilingual Hindi/English)
-    ├── static/css/style.css           ← Frontend styles
-    ├── static/js/app.js               ← Frontend JavaScript
+    ├── templates/index.html           ─ Web UI
+    ├── static/css/style.css           ─ Frontend styles
+    ├── static/js/app.js               ─ Frontend JavaScript
     │
     └── scripts/
-        ├── fetch_district_weather.py  ← Step 7: Download district weather data
-        ├── train_model.py             ← Step 8: Train all ML models
-        ├── test_api.py                ← API smoke tests
-        └── test_recommend.py         ← Recommendation integration tests
+        ├── fetch_district_weather.py  ─ Step 7: Download district weather data
+        ├── train_model.py             ─ Step 8: Train weather & suitability models
+        ├── test_api.py                ─ API smoke tests
+        └── test_recommend.py         ─ Recommendation integration tests
 ```
 
 ---
@@ -623,6 +629,7 @@ Indian-Farmer-Crop-Recommendation-System/
 [ ] pip install -r requirements.txt completed
 [ ] python run_website.py running
 [ ] Browser opened at http://localhost:8000
+[ ] Optional: set GEMINI_API_KEY in .env for AI explanations
 ```
 
 ---

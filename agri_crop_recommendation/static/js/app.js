@@ -1,12 +1,5 @@
 /**
  * Indian Farmer Crop Recommendation System — Frontend v2.0
- *
- * New in v2:
- * - Renders llm_explanation cards (English + why_good + watch_out + local language)
- * - AI-powered banner when llm_powered === true
- * - Gemini chat widget via /chat endpoint
- * - Expanded crop emoji map (50+ crops)
- * - Improved score animations & visual phase timeline
  */
 
 // ===== Global State =====
