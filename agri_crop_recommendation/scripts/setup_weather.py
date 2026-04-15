@@ -4,10 +4,10 @@ Generates 10+ years of realistic monthly weather data based on Indian
 climatological patterns (IMD reference data).
 
 Usage:
-    python scripts/generate_historical_weather.py
+    python scripts/setup_weather.py
 
 Output:
-    data/weather/zone/historical_weather.csv  — 792 rows (6 zones × 11 years × 12 months)
+    data/weather/zone/historical_weather.csv  -- 792 rows (6 zones x 11 years x 12 months)
 """
 
 import os
@@ -175,8 +175,8 @@ def generate_dataset(output_dir="data/weather/zone"):
         writer.writeheader()
         writer.writerows(rows)
 
-    print(f"✅ Generated {len(rows)} records → {filepath}")
-    print(f"   Zones: {len(ZONES)}, Years: {len(YEARS)}, Months: 12")
+    print(f"[OK] Generated {len(rows)} records -> {filepath}")
+    print(f"     Zones: {len(ZONES)}, Years: {len(YEARS)}, Months: 12")
     return filepath
 
 
