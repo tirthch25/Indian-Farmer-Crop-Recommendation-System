@@ -340,7 +340,7 @@ models/weather_xgboost/
 python scripts/train_model.py --model xgboost_weather --sample 10
 ```
 
-> ⏳ **Estimated time:** 5–20 minutes (full 640 districts). Use `--sample 10` for a 1-minute test run.
+> ⏳ **Estimated time:** 5–20 minutes (full 455 districts). Use `--sample 10` for a 1-minute test run.
 
 ---
 
@@ -365,10 +365,10 @@ python scripts/train_model.py --model lstm_weather
 ============================================================
   Loading district data...
   Building sequences for 640 districts...
-  Epoch [1/20] Loss: 0.4821
-  Epoch [2/20] Loss: 0.3915
+  Epoch [1/20] Loss: 0.5952
+  Epoch [2/20] Loss: 0.5677
   ...
-  Epoch [20/20] Loss: 0.1034
+  Epoch [20/20] RMSE: 0.4502
   [OK] LSTM weather model saved -> models/weather_lstm/
 ```
 
@@ -399,7 +399,7 @@ python scripts/train_model.py --model lstm_weather --sample 10 --epochs 5
 python scripts/train_model.py --model lstm_weather --device cuda --epochs 30
 ```
 
-> ⏳ **Estimated time:** 15–60 minutes on CPU (full dataset). ~5–10 minutes with a GPU.
+> ⏳ **Estimated time:** 2–3 hrs on CPU (full 455-district dataset, 1.8M sequences, 20 epochs). ~15–30 min with a GPU.
 
 ---
 
@@ -449,8 +449,8 @@ python scripts/verify_models.py
 
 Expected output:
 ```
-LSTM: 640 districts, final_rmse=0.1034, epochs=20
-XGB:  640 districts trained
+LSTM: 455 districts, final_rmse=0.4502, epochs=20
+XGB:  455 districts trained
 ...
 PASSED - LSTM inference working for new districts
 ```

@@ -200,7 +200,7 @@ def main():
         train_lstm_weather(args)
 
     print(f"\n{'='*60}")
-    print(f"  ALL DONE ✅")
+    print(f"  ALL DONE [OK]")
     print(f"{'='*60}\n")
 
 

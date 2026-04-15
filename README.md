@@ -54,8 +54,8 @@ Farmers interact through a **farmer-friendly web interface**, while developers c
 
 | Model | Type | Purpose | Performance |
 |-------|------|---------|-------------|
-| **LSTM Weather Forecaster** | PyTorch (2-layer LSTM) | 7-day weather forecast | Trained on 640+ districts |
-| **XGBoost Weather Forecaster** | Gradient Boosted Trees | temp_max, temp_min, rainfall | 50+ lag/rolling features |
+| **LSTM Weather Forecaster** | PyTorch (2-layer LSTM) | 7-day weather forecast | Trained on 455 districts, RMSE 0.4502 |
+| **XGBoost Weather Forecaster** | Gradient Boosted Trees | temp_max, temp_min, rainfall | 455 districts, 74 lag/rolling features |
 | **Random Forest Crop Suitability** | Scikit-learn RF | Suitability score 0–100 | ML-blended 60:40 |
 
 ### 🧠 Gemini LLM Integration
@@ -259,34 +259,6 @@ Generate ML-enhanced crop recommendations for a region.
 - `planting_calendars` — milestone dates for each recommended crop
 - `llm_powered` — `true` when Gemini explanations are active
 
-{
-  "crop": "Green Gram (Moong)",
-  "suitability_score": 87.5,
-  "predicted_yield_mean": 9.2,
-  "predicted_yield_min": 7.2,
-  "predicted_yield_max": 10.9,
-  "yield_unit": "q/ha",
-  "yield_confidence": "High"
-}
-```
-
----
-
-### `GET /satellite/{region_id}?days=30` *(New in v3.0)*
-Get satellite-derived NDVI and soil moisture for a district.
-
-```json
-{
-  "region_id": "MH_PUNE",
-  "soil_moisture_pct": 42.3,
-  "ndvi_current": 0.38,
-  "ndvi_history": [0.31, 0.34, 0.38, ...],
-  "vegetation_status": "Fair",
-  "data_date": "2026-04-11",
-  "source": "NASA POWER (solar+rain+temp → NDVI proxy)"
-}
-```
-
 ### `GET /forecast/{region_id}?days=N`
 ML-powered weather forecast. Uses LSTM + XGBoost ensemble when district models are available.
 
@@ -331,8 +303,7 @@ agri_crop_recommendation/
 │   │   ├── pipeline.py              # Training data generation & feature engineering
 │   │   ├── predictor.py             # Random Forest crop suitability model
 │   │   ├── lstm_weather.py          # PyTorch LSTM weather forecasting model
-│   │   ├── xgboost_weather.py       # XGBoost weather forecasting model
-│   │   └── yield_predictor.py       # ✨ NEW: XGBoost crop yield regression model
+│   │   └── xgboost_weather.py       # XGBoost weather forecasting model
 │   │
 │   ├── services/                    # Domain business logic
 │   │   ├── recommender.py           # Multi-factor crop recommendation engine
@@ -461,10 +432,8 @@ GEMINI_API_KEY=your_key_here
 - [x] Planting calendar with visual phase timeline and crop emoji icons
 - [x] **v2.0 UI overhaul** — premium light theme, AI badge, LLM explanation rendering
 - [x] **AI Farming Chat** — `POST /chat` powered by Gemini for free-form farmer Q&A
-- [ ] Crop Yield Prediction — XGBoost regression model
-- [ ] Satellite NDVI + Soil Moisture Integration
 - [ ] Multi-language UI (Hindi, Marathi, Telugu, Tamil, Kannada)
-- [ ] Market price integration (Agmarknet API)
+- [ ] Market price integration (Agmarknet / data.gov.in API)
 - [ ] WhatsApp / SMS bot for offline farmers
 - [ ] PWA (Progressive Web App) with offline support
 - [ ] IoT soil sensor integration
