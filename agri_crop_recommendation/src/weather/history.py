@@ -3,18 +3,18 @@ Historical Weather Reader for Indian Agro-Climatic Zones
 
 Reads the generated historical_weather.csv and provides:
   - Zone-level climatological baselines (10-year monthly averages)
-  - Region → Zone mapping using existing ZONE_REGIONS from crop_db
+  - Region -> Zone mapping using state prefix codes
   - Seasonal baselines (avg temp, monthly rainfall, humidity) used by:
-      • open_meteo.py  (API fallback)
-      • medium_range.py (climatology forecast)
+      • forecast.py  (climatology forecast fallback)
       • recommender.py  (weather_conditions humidity)
+      • app.py  (monthly climate chart for the UI)
 
-Zone reference (from ZONE_REGIONS in crop_db.py):
-  North  : UP, Punjab, Haryana, Rajasthan, Himachal, Uttarakhand, Delhi, J&K
-  South  : Karnataka, Tamil Nadu, AP, Telangana, Kerala
-  East   : West Bengal, Bihar, Odisha, Jharkhand
-  West   : Maharashtra, Gujarat, Rajasthan (arid)
-  Central: MP, Chhattisgarh
+Zone reference:
+  North    : UP, Punjab, Haryana, Rajasthan, Himachal, Uttarakhand, Delhi, J&K
+  South    : Karnataka, Tamil Nadu, AP, Telangana, Kerala
+  East     : West Bengal, Bihar, Odisha, Jharkhand
+  West     : Maharashtra, Gujarat
+  Central  : MP, Chhattisgarh
   Northeast: Assam, Arunachal, Manipur, Meghalaya, Sikkim, Nagaland, Tripura
 """
 
