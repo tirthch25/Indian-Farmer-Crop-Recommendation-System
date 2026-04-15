@@ -432,11 +432,7 @@ GEMINI_API_KEY=your_key_here
 - [x] Planting calendar with visual phase timeline and crop emoji icons
 - [x] **v2.0 UI overhaul** — premium light theme, AI badge, LLM explanation rendering
 - [x] **AI Farming Chat** — `POST /chat` powered by Gemini for free-form farmer Q&A
-- [ ] Multi-language UI (Hindi, Marathi, Telugu, Tamil, Kannada)
 - [ ] Market price integration (Agmarknet / data.gov.in API)
-- [ ] WhatsApp / SMS bot for offline farmers
-- [ ] PWA (Progressive Web App) with offline support
-- [ ] IoT soil sensor integration
 
 ---
 

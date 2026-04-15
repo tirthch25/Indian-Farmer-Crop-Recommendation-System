@@ -193,8 +193,7 @@ Provides a single-page web application that allows farmers (or agricultural advi
 | `GET` | `/` | Serve the web interface (HTML) |
 | `GET` | `/health` | System health check |
 | `GET` | `/regions` | List all 640+ supported regions |
-| `POST` | `/recommend` | **Main endpoint** — Generate crop recommendations (+ yield) |
-| `GET` | `/satellite/{region_id}` | **NEW** — Satellite NDVI + soil moisture for a district |
+| `POST` | `/recommend` | **Main endpoint** — Generate crop recommendations |
 | `GET` | `/forecast/{region_id}` | Get ML weather forecast for a region |
 | `POST` | `/risk-assessment` | Get detailed risk assessment for a crop |
 | `GET` | `/pest-warnings/{region_id}` | Get pest/disease warnings for a region |
@@ -976,11 +975,8 @@ agri_crop_recommendation/
 | Feature | Description |
 |---------|-------------|
 | **Satellite Imagery** | Integrate NDVI (Normalized Difference Vegetation Index) for real soil moisture |
-| **Multi-language Support** | Hindi, Marathi, Telugu, Tamil, Kannada interface options |
-| **Market Integration** | Live mandi (agricultural market) prices via Agmarknet API |
-| **SMS/WhatsApp Alerts** | Push pest warnings and weather alerts to farmers without internet |
+| **Market Integration** | Live mandi (agricultural market) prices via Agmarknet / data.gov.in API |
 | **Long-duration Crops** | Add Wheat, Rice, Cotton, Sugarcane with multi-season planning |
-| **IoT Integration** | Support soil moisture/NPK sensor readings as direct input |
 | **Farmer Profile** | Persistent user accounts to track recommendations over seasons |
 | **Yield Prediction** | Add ML model to predict expected yield per crop |
 | **Climate Change Scenarios** | Incorporate IPCC climate projections for 5/10-year planning |
