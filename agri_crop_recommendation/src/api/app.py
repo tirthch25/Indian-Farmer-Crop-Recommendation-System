@@ -38,18 +38,23 @@ except ImportError:
     answer_farmer_question = None
 
 app = FastAPI(
-    title="Indian Farmer Crop Recommendation API v2",
+    title="Indian Farmer Crop Recommendation API v2.5",
     description="ML-powered crop recommendation with LSTM + XGBoost weather, Random Forest suitability, "
-                "risk assessment, pest warnings, planting calendar, and Gemini LLM regional filtering + "
-                "AI explanations for Indian farmers.",
-    version="2.0"
+                "risk assessment, pest warnings, planting calendar, Gemini LLM regional filtering + "
+                "AI explanations, and farmer chat for Indian farmers. "
+                "Covers 559+ districts across 34 states.",
+    version="2.5"
 )
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Setup templates
-templates = Jinja2Templates(directory="templates")
+# Setup templates — cache_size=0 disables Jinja2's LRUCache which crashes on
+# Python 3.14 due to unhashable dict inside tuple cache keys (upstream bug)
+from jinja2 import Environment, FileSystemLoader
+_jinja_env = Environment(loader=FileSystemLoader("templates"), cache_size=0)
+from starlette.templating import Jinja2Templates as _J2T
+templates = _J2T(env=_jinja_env)
 
 # Initialize managers
 region_manager = RegionManager()
@@ -135,10 +140,15 @@ def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-@app.get("/favicon.ico")
+@app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    """Return favicon to prevent 404 errors."""
-    from fastapi.responses import Response
+    """Serve the real favicon from static/favicon.ico."""
+    from fastapi.responses import FileResponse, Response
+    from pathlib import Path
+    ico_path = Path("static/favicon.ico")
+    if ico_path.exists():
+        return FileResponse(ico_path, media_type="image/x-icon")
+    # Fallback: 1×1 transparent pixel so the browser never gets a 404
     return Response(
         content=b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82',
         media_type="image/x-icon"
@@ -161,7 +171,7 @@ def health_check():
 
     return {
         "status": "healthy",
-        "version": "2.0",
+        "version": "2.5",
         "regions_loaded": len(region_manager.get_all_regions()),
         "ml_models": ml_status,
         "llm_available": llm_available,
@@ -246,7 +256,7 @@ def recommend(request: RegionRequest):
             'avg_temp_min': float(weather['temp_min'].mean()),
             'avg_temp': float(weather['temp_avg'].mean()) if 'temp_avg' in weather.columns else float((weather['temp_max'].mean() + weather['temp_min'].mean()) / 2),
             'total_rainfall': float(forecast.get('expected_rainfall_mm', 0)),
-            'avg_humidity': 65,
+            'avg_humidity': float(weather['humidity'].mean()) if 'humidity' in weather.columns else 65,
             'forecast_days': request.planning_days
         }
         
@@ -486,7 +496,7 @@ def get_pest_warnings(region_id: str, crop_id: Optional[str] = None):
             'avg_temp_min': float(weather['temp_min'].mean()),
             'avg_temp': float((weather['temp_max'].mean() + weather['temp_min'].mean()) / 2),
             'total_rainfall': float(weather['rainfall'].sum()),
-            'avg_humidity': 65,
+            'avg_humidity': float(weather['humidity'].mean()) if 'humidity' in weather.columns else 65,
             'forecast_days': len(weather)
         }
         
