@@ -7,8 +7,8 @@
 ![PyTorch](https://img.shields.io/badge/PyTorch-LSTM-EE4C2C?style=for-the-badge&logo=pytorch)
 ![XGBoost](https://img.shields.io/badge/XGBoost-Weather-007ACC?style=for-the-badge)
 ![scikit-learn](https://img.shields.io/badge/Scikit--Learn-ML-F7931E?style=for-the-badge&logo=scikit-learn)
-![Gemini](https://img.shields.io/badge/Gemini-LLM%20Powered-4285F4?style=for-the-badge&logo=google)
-![Version](https://img.shields.io/badge/Version-2.0-brightgreen?style=for-the-badge)
+![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-4285F4?style=for-the-badge&logo=google)
+![Version](https://img.shields.io/badge/Version-2.1-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 **A nationwide, season-aware, AI-powered crop recommendation system for Indian farmers — covering all 640 districts across all major Indian states.**
@@ -21,12 +21,13 @@
 
 ## 🧭 Overview
 
-The **Indian Farmer Crop Recommendation System** (v2.0) is a full-stack intelligent agricultural advisory platform that helps Indian farmers make data-driven decisions about crop selection and planning. It combines:
+The **Indian Farmer Crop Recommendation System** (v2.1) is a full-stack intelligent agricultural advisory platform that helps Indian farmers make data-driven decisions about crop selection and planning. It combines:
 
 - **Real-time + historical weather data** — Open-Meteo API, 640+ districts, 10+ years
 - **ML-powered weather forecasting** — LSTM + XGBoost ensemble (district-aware)
 - **Crop suitability prediction** — Random Forest, 6-factor ML-blended scoring
-- **Gemini LLM integration** — regional crop filtering + farmer-friendly AI explanations + farming chat
+- **Gemini-powered regional enrichment** — pre-computed, district-level crop approval database (640 districts)
+- **Gemini LLM integration** — farmer-friendly AI explanations + farming chat
 - **Risk assessment, pest warnings, planting calendar** — complete crop advisory pipeline
 - **Premium web UI** — bilingual (Hindi/English), Chart.js visualizations, responsive design
 
@@ -42,6 +43,27 @@ Farmers interact through a **farmer-friendly web interface**, while developers c
 - Each region includes geographic coordinates, elevation, climate zone, soil type, and supported seasons
 - **Full agro-climatic zone coverage**: every region receives a zone-based suitability score (0.75) — eliminating the prior 552-region gap
 - **Haversine-based nearest region finder** (150 km radius) for GPS coordinate-based lookups
+
+### 🗄️ Pre-Computed Regional Crop Enrichment (NEW in v2.1)
+The most significant upgrade in v2.1 is a **one-time Gemini-powered enrichment pipeline** that maps all 640 districts to their approved crops and per-crop suitability scores:
+
+- **`enrich_regional_crops.py`** queries `gemini-2.5-flash` for every district and caches results in `data/reference/regional_crops.json`
+- Scores range from **0.50** (possible with irrigation) to **1.00** (district is famous for the crop)
+- Results are loaded at server startup from `regional_crops.json` — **zero runtime LLM calls needed for filtering**
+- The recommendation engine uses a priority chain:
+  1. ✅ **Enrichment JSON** (fast, deterministic, district-specific)
+  2. 🔄 **Runtime LLM filter** (for districts not yet enriched)
+  3. 📋 **Static zone-based scores** (guaranteed fallback)
+- Supports `--only-missing` flag to resume enrichment across quota resets
+- Saves progress incrementally every 10 districts — safe to interrupt
+
+```bash
+# Run once to enrich all 640 districts (resumes where left off)
+python scripts/enrich_regional_crops.py --only-missing
+
+# Enrich a single state only
+python scripts/enrich_regional_crops.py --state MH
+```
 
 ### 🌦️ Weather & Historical Climate Data
 - Real-time weather from **[Open-Meteo API](https://open-meteo.com/)** — no API key needed
@@ -59,11 +81,18 @@ Farmers interact through a **farmer-friendly web interface**, while developers c
 | **Random Forest Crop Suitability** | Scikit-learn RF | Suitability score 0–100 | ML-blended 60:40 |
 
 ### 🧠 Gemini LLM Integration
-A two-layer AI pipeline powered by **Google Gemini (`gemini-2.0-flash-lite`)**:
+Powered by **Google Gemini (`gemini-2.5-flash`)** via the **`google-genai`** SDK (new, actively maintained):
 
-#### 🔍 Regional Crop Filter (`llm_filter.py`)
+> ⚠️ **SDK Note**: This project uses the **`google-genai`** package (`from google import genai`). The older `google-generativeai` package is deprecated and no longer receives updates.
+
+#### 🏗️ District Enrichment Pipeline (`enrich_regional_crops.py`)
+- Queries Gemini once per district to approve crops and assign suitability scores (0.50–1.00)
+- Results cached in `regional_crops.json` — no repeated API calls at serve time
+- Gracefully handles daily quota limits with exponential back-off and `--only-missing` resume
+
+#### 🔍 Runtime Regional Crop Filter (`llm_filter.py`)
+- Used for districts **not yet in** `regional_crops.json`
 - Sends ML-ranked crop shortlist to Gemini with district name, state, zone, and season context
-- Removes geographically inappropriate crops (e.g., Baby Corn in Nanded, Apple in MP)
 - Graceful fallback to unfiltered ML list if Gemini is unavailable
 
 #### 💬 Farmer-Friendly Explainer (`llm_explainer.py`)
@@ -124,32 +153,39 @@ Multi-factor **suitability score (0–100)** across 6 dimensions:
                │
                ▼
    ┌──────────────────────────────────┐
-   │  Open-Meteo API                  │  → Real-time + historical weather
-   │  District Historical Data        │  → 640+ districts, 34 states
+   │  Open-Meteo API                  │  -> Real-time + historical weather
+   │  District Historical Data        │  -> 640+ districts, 34 states
    └──────────┬───────────────────────┘
                │
                ▼
    ┌──────────────────────────────────┐
-   │  Feature Engineering             │  → Agri-specific features
-   │  LSTM Weather Model              │  → PyTorch, 30-day lookback
-   │  XGBoost Weather Models          │  → Lag + rolling features
-   │  Ensemble Forecast               │  → Blended 7-day ahead forecast
+   │  Feature Engineering             │  -> Agri-specific features
+   │  LSTM Weather Model              │  -> PyTorch, 30-day lookback
+   │  XGBoost Weather Models          │  -> Lag + rolling features
+   │  Ensemble Forecast               │  -> Blended 7-day ahead forecast
    └──────────┬───────────────────────┘
                │
                ▼
    ┌──────────────────────────────────┐
-   │  Gemini LLM Regional Filter      │  → Remove geographically wrong crops
-   │  CropSuitabilityRF               │  → Random Forest suitability scoring
-   │  Rule-Based Engine               │  → 6-factor score (fallback / blend)
-   │  Risk Engine                     │  → Drought / temperature / event risk
-   │  Pest Warning System             │  → Weather-triggered crop threats
-   │  Planting Calendar               │  → Season-phased milestone dates
+   │  Regional Enrichment Gate        │  -> Pre-computed JSON (fast, deterministic)
+   │    regional_crops.json           │     district -> approved crops + scores
+   │  [Fallback] LLM Runtime Filter   │  -> Runtime Gemini call (unenriched districts)
+   │  [Fallback] Zone-based scores    │  -> Static 0.75 score guarantee
    └──────────┬───────────────────────┘
                │
                ▼
    ┌──────────────────────────────────┐
-   │  Gemini LLM Explainer            │  → 2-sentence farmer-friendly reason
-   │  (gemini-2.0-flash-lite)         │  → Hindi / Marathi / English output
+   │  CropSuitabilityRF               │  -> Random Forest suitability scoring
+   │  Rule-Based Engine               │  -> 6-factor score (fallback / blend)
+   │  Risk Engine                     │  -> Drought / temperature / event risk
+   │  Pest Warning System             │  -> Weather-triggered crop threats
+   │  Planting Calendar               │  -> Season-phased milestone dates
+   └──────────┬───────────────────────┘
+               │
+               ▼
+   ┌──────────────────────────────────┐
+   │  Gemini LLM Explainer            │  -> 2-sentence farmer-friendly reason
+   │  (gemini-2.5-flash)              │  -> Hindi / Marathi / English output
    └──────────┬───────────────────────┘
                │
                ▼
@@ -195,27 +231,35 @@ GEMINI_API_KEY=your_gemini_api_key_here
 ```
 > **Without a key**: runs fully in ML-only mode. All LLM steps are silently skipped.
 
-### 5. (Optional) Fetch District-Level Weather Data
+### 5. (Optional but Recommended) Run Regional Crop Enrichment
+```bash
+python scripts/enrich_regional_crops.py --only-missing
+```
+> Queries `gemini-2.5-flash` once per district and caches results in `data/reference/regional_crops.json`.
+> The free Gemini tier supports ~1,500 requests/day. Re-run with `--only-missing` on subsequent days to continue.
+> **Without this step**: the system uses runtime LLM filtering or static zone scores — fully functional but slightly less accurate per-district.
+
+### 6. (Optional) Fetch District-Level Weather Data
 ```bash
 python scripts/fetch_district_weather.py
 ```
 > Downloads 10 years of daily weather data for 640+ districts. Required for full LSTM/XGBoost weather model accuracy. Takes several hours due to API rate limits.
 
-### 6. (Optional) Train the Weather & Crop Suitability Models
+### 7. (Optional) Train the Weather & Crop Suitability Models
 ```bash
 python scripts/train_model.py --model all --epochs 20
 ```
 > Trains LSTM, XGBoost weather forecasters, and Random Forest crop suitability model.
 
-### 7. Start the Web Server
+### 8. Start the Web Server
 ```bash
 python run_website.py
 ```
 
-### 8. Open in Your Browser
+### 9. Open in Your Browser
 ```
-http://localhost:8000          ← Web Interface
-http://localhost:8000/docs     ← Swagger API Docs
+http://localhost:8000          <- Web Interface
+http://localhost:8000/docs     <- Swagger API Docs
 ```
 
 ---
@@ -295,7 +339,7 @@ agri_crop_recommendation/
 │   │   └── app.py                   # FastAPI app — all REST endpoints (v3.0)
 │   │
 │   ├── crops/
-│   │   ├── database.py              # 50+ crops with all attributes
+│   │   ├── database.py              # 50+ crops + regional_crops.json loader
 │   │   ├── models.py                # CropInfo data model
 │   │   └── soil.py                  # SoilInfo model + compatibility scoring
 │   │
@@ -310,7 +354,7 @@ agri_crop_recommendation/
 │   │   ├── calendar.py              # Season-phased planting calendar
 │   │   ├── pests.py                 # Weather-triggered pest & disease warnings
 │   │   ├── risk.py                  # Drought / temperature / event risk scoring
-│   │   ├── llm_filter.py            # Gemini LLM regional crop filter
+│   │   ├── llm_filter.py            # Gemini LLM runtime regional crop filter (fallback)
 │   │   ├── llm_explainer.py         # Gemini LLM farmer-friendly explanation generator
 │   │   └── llm_chat.py              # Gemini LLM farming Q&A chat
 │   │
@@ -326,6 +370,7 @@ agri_crop_recommendation/
 ├── data/
 │   ├── reference/
 │   │   ├── regions.json             # 640+ region profiles (all Indian states)
+│   │   ├── regional_crops.json      # Gemini-enriched district crop approvals (generated)
 │   │   └── crop_knowledge.json      # Growth phases, pest DB, planting windows
 │   └── weather/
 │       ├── zone/
@@ -357,6 +402,7 @@ agri_crop_recommendation/
 │   └── js/app.js                    # Frontend JavaScript (v2.0)
 │
 ├── scripts/
+│   ├── enrich_regional_crops.py     # Gemini-powered district crop enrichment (NEW)
 │   ├── fetch_district_weather.py    # Fetch district-level weather from Open-Meteo
 │   ├── train_model.py               # Train RF, LSTM & XGBoost weather models
 │   ├── setup_weather.py             # Fetch & persist zone weather history
@@ -365,6 +411,7 @@ agri_crop_recommendation/
 │   └── test_planning_days.py        # Planning days filter validation tests
 │
 ├── .env                             # GEMINI_API_KEY (create manually — not committed)
+├── .env.example                     # Environment variable template
 ├── main.py                          # Quick CLI demo
 ├── run_website.py                   # Web server startup script
 └── requirements.txt
@@ -378,13 +425,15 @@ agri_crop_recommendation/
 |-------|-----------|
 | **Backend API** | Python 3.8+, FastAPI v2.0, Uvicorn |
 | **Frontend** | HTML5, CSS3, JavaScript (Jinja2 templates) |
-| **Data Storage** | JSON (regions/crop knowledge), CSV (zone climate), Parquet (district weather) |
+| **Data Storage** | JSON (regions/crop knowledge/enrichment), CSV (zone climate), Parquet (district weather) |
 | **Data Processing** | Pandas, NumPy |
 | **Machine Learning** | scikit-learn (Random Forest), PyTorch (LSTM), XGBoost (weather) |
-| **LLM (AI Layer)** | Google Gemini API (`gemini-2.0-flash-lite`) via `google-genai` |
+| **LLM (AI Layer)** | Google Gemini API (`gemini-2.5-flash`) via **`google-genai`** SDK |
 | **Weather API** | Open-Meteo (free, no API key required) |
 | **ML Serialization** | joblib (XGBoost / RF), torch.save (LSTM) |
 | **Config** | python-dotenv (`.env` for API keys) |
+
+> **SDK notice**: This project uses the **`google-genai`** package (`pip install google-genai`), which is the current, actively maintained Google AI Python SDK. The older `google-generativeai` package is deprecated.
 
 ---
 
@@ -404,12 +453,27 @@ agri_crop_recommendation/
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GEMINI_API_KEY` | Optional | Google Gemini API key for LLM regional filtering, AI explanations, and farming chat. Get one free at [aistudio.google.com](https://aistudio.google.com/app/apikey). |
+| `GEMINI_API_KEY` | Optional | Google Gemini API key for regional crop enrichment, LLM filtering, AI explanations, and farming chat. Get one free at [aistudio.google.com](https://aistudio.google.com/app/apikey). |
 
 Create `.env` inside `agri_crop_recommendation/`:
 ```env
 GEMINI_API_KEY=your_key_here
 ```
+
+---
+
+## 📊 Regional Enrichment Progress
+
+The `enrich_regional_crops.py` script processes all 640 districts using the Gemini API. Due to free-tier API quotas, this is run incrementally across multiple days using `--only-missing`.
+
+| Metric | Value |
+|--------|-------|
+| Total districts | 640 |
+| Enrichment output | `data/reference/regional_crops.json` |
+| Model used | `gemini-2.5-flash` |
+| Score range | 0.50 (possible) → 1.00 (district famous for crop) |
+| Resume support | `--only-missing` flag |
+| Quota handling | Auto-detects daily limit; saves & stops gracefully |
 
 ---
 
@@ -427,11 +491,13 @@ GEMINI_API_KEY=your_key_here
 - [x] LSTM weather forecasting model (PyTorch, district-aware)
 - [x] XGBoost weather forecasting models (temp_max, temp_min, rainfall)
 - [x] Full agro-climatic zone suitability for all 640 regions (0.75 score)
-- [x] Gemini LLM regional crop filter (removes geographically wrong crops per district)
+- [x] Gemini LLM runtime regional crop filter (removes geographically wrong crops per district)
 - [x] Gemini LLM farmer-friendly explainer (Hindi / Marathi / English, top 3 crops)
 - [x] Planting calendar with visual phase timeline and crop emoji icons
 - [x] **v2.0 UI overhaul** — premium light theme, AI badge, LLM explanation rendering
 - [x] **AI Farming Chat** — `POST /chat` powered by Gemini for free-form farmer Q&A
+- [x] **v2.1 — Gemini Regional Crop Enrichment** — pre-computed district crop database (`regional_crops.json`) via `google-genai` SDK + `gemini-2.5-flash`
+- [ ] Complete enrichment for all 640 districts (in progress — incremental daily runs)
 - [ ] Market price integration (Agmarknet / data.gov.in API)
 
 ---
@@ -439,7 +505,7 @@ GEMINI_API_KEY=your_key_here
 ## 🙏 Acknowledgements
 
 - **[Open-Meteo](https://open-meteo.com/)** — Free, open-source weather API (weather data + soil moisture)
-- **[Google Gemini](https://ai.google.dev/)** — LLM API powering regional crop filtering, AI explanations and farming chat
+- **[Google Gemini](https://ai.google.dev/)** — LLM API powering regional crop enrichment, AI explanations and farming chat
 - **C-DAC (Centre for Development of Advanced Computing)** — Project incubation
 - Indian farmers — The end users who inspired this project
 
