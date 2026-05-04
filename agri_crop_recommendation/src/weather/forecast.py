@@ -1,4 +1,4 @@
-﻿"""
+"""
 Medium-Range Weather Forecasting (ML-Enhanced)
 
 Provides weather forecasts for agricultural planning:
@@ -40,14 +40,19 @@ def forecast_days_17_90(weather_df: pd.DataFrame, planning_days: int = 90, regio
     
     if ml_forecast:
         logger.info(f"Using ML forecast for region {region_id}")
+        ml_sum = ml_forecast.get('summary', {})
         return {
-            "expected_avg_temp": ml_forecast['summary'].get('avg_temp', 25.0),
-            "expected_rainfall_mm": ml_forecast['summary'].get('total_rainfall', 100.0),
-            "dry_spell_risk": _calculate_dry_spell_risk(ml_forecast),
-            "forecast_source": ml_forecast.get('model_used', 'ML ensemble'),
-            "confidence": ml_forecast.get('confidence', 'medium'),
-            "daily_predictions": ml_forecast.get('predictions', []),
-            "ml_summary": ml_forecast.get('summary', {})
+            "expected_avg_temp":    ml_sum.get('avg_temp', 25.0),
+            "expected_temp_max":    ml_sum.get('avg_temp_max', ml_sum.get('avg_temp', 30.0)),
+            "expected_temp_min":    ml_sum.get('avg_temp_min', ml_sum.get('avg_temp', 20.0)),
+            "expected_rainfall_mm": ml_sum.get('total_rainfall', 100.0),
+            "dry_spell_risk":       _calculate_dry_spell_risk(ml_forecast),
+            "forecast_source":      ml_forecast.get('model_used', 'ML ensemble'),
+            "confidence":           ml_forecast.get('confidence', 'medium'),
+            "daily_predictions":    ml_forecast.get('predictions', []),
+            "predictions":          ml_forecast.get('predictions', []),
+            "summary":              ml_sum,
+            "ml_summary":           ml_sum,
         }
     
     # --- Fallback: Climatology-based estimation (uses historical zone data) ---
@@ -168,20 +173,24 @@ def _climatology_forecast(weather_df: pd.DataFrame, planning_days: int, region_i
     except Exception as e:
         logger.debug(f"Historical weather data not available: {e}")
 
-    # ── Short-term signals (Days 1–16 from API) ───────────────────────────────
+    # ── Short-term signals (Days 1–16 from API) — these are REAL per-district temps
     avg_temp_api    = float(weather_df["temp_avg"].mean())
+    avg_temp_max_api = float(weather_df["temp_max"].mean())
+    avg_temp_min_api = float(weather_df["temp_min"].mean())
     avg_daily_rain  = float(weather_df["rainfall"].mean())
     dry_spell_risk  = int(weather_df["dry_spell_days"].max())
 
     if avg_daily_rain < 0.5:
         avg_daily_rain = 1.5  # conservative climatological floor
 
-    # ── Blend API recent data (30%) with historical baseline (70%) ────────────
+    # ── Blend: 70% live API (district-specific) + 30% historical baseline ─────
+    # Prioritising live data ensures each district shows its real temperature,
+    # not the zone average shared by all cities in the same state.
     if hist_temp is not None:
-        expected_temp = round(0.3 * avg_temp_api + 0.7 * hist_temp, 1)
-        expected_rain = round(0.3 * (avg_daily_rain * planning_days) + 0.7 * hist_rain, 1)
+        expected_temp = round(0.70 * avg_temp_api + 0.30 * hist_temp, 1)
+        expected_rain = round(0.70 * (avg_daily_rain * planning_days) + 0.30 * hist_rain, 1)
         expected_hum  = hist_hum
-        forecast_source = "historical_zone_blend"
+        forecast_source = "live_blend"
         confidence = "medium"
     else:
         # Pure API extrapolation (original fallback)
@@ -195,8 +204,19 @@ def _climatology_forecast(weather_df: pd.DataFrame, planning_days: int, region_i
         forecast_source = "climatology"
         confidence = "low"
 
+    # Build daily predictions from live weather_df (Days 1-16, actual API data)
+    daily_predictions = []
+    for _, row in weather_df.iterrows():
+        daily_predictions.append({
+            "temp_max": float(row.get("temp_max", avg_temp_max_api)),
+            "temp_min": float(row.get("temp_min", avg_temp_min_api)),
+            "rainfall": float(row.get("rainfall", 0)),
+        })
+
     return {
         "expected_avg_temp":     expected_temp,
+        "expected_temp_max":     round(avg_temp_max_api, 1),
+        "expected_temp_min":     round(avg_temp_min_api, 1),
         "expected_rainfall_mm":  expected_rain,
         "expected_humidity":     round(expected_hum, 1),
         "dry_spell_risk": (
@@ -206,9 +226,18 @@ def _climatology_forecast(weather_df: pd.DataFrame, planning_days: int, region_i
         ),
         "forecast_source": forecast_source,
         "confidence":      confidence,
-        "daily_predictions": [],
+        "daily_predictions": daily_predictions,
+        "predictions":       daily_predictions,   # alias for risk engine
+        "summary": {
+            "avg_temp":      expected_temp,
+            "avg_temp_max":  round(avg_temp_max_api, 1),
+            "avg_temp_min":  round(avg_temp_min_api, 1),
+            "total_rainfall": expected_rain,
+            "avg_humidity":  round(expected_hum, 1),
+        },
         "ml_summary": {}
     }
+
 
 
 

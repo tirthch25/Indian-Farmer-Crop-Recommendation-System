@@ -104,14 +104,25 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     regions = json.load(open("data/reference/regions.json"))
-    have_data = set(d.name for d in OUTPUT_DIR.iterdir() if d.is_dir())
-    missing = [
-        r for r in regions["regions"]
-        if r["region_id"] not in have_data
-        and r.get("latitude") and r.get("longitude")
-    ]
-
     years = list(range(START_YEAR, END_YEAR + 1))
+
+    # Include districts with no folder AND those with incomplete year files
+    all_targets = []
+    for r in regions["regions"]:
+        if not r.get("latitude") or not r.get("longitude"):
+            continue
+        rid = r["region_id"]
+        dist_dir = OUTPUT_DIR / rid
+        if not dist_dir.exists():
+            all_targets.append(r)  # completely missing
+        else:
+            existing = {f.stem for f in dist_dir.glob("*.parquet")}
+            needed = {str(y) for y in years}
+            if not needed.issubset(existing):
+                all_targets.append(r)  # partial — some years missing
+
+    missing = all_targets
+
     total = len(missing) * len(years)
     logger.info(f"Districts to fetch : {len(missing)}")
     logger.info(f"Years per district : {len(years)}  ({START_YEAR}-{END_YEAR})")

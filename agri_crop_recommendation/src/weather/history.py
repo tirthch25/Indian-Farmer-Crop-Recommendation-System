@@ -37,7 +37,7 @@ _STATE_TO_ZONE: Dict[str, str] = {
     "KA": "South", "TN": "South", "AP": "South", "TS": "South", "KL": "South",
     # East
     "WB": "East",  "BR": "East",  "OD": "East",  "JH": "East",
-    # West
+    # West (coastal Maharashtra + Gujarat)
     "MH": "West",  "GJ": "West",
     # Central
     "MP": "Central", "CG": "Central",
@@ -46,14 +46,40 @@ _STATE_TO_ZONE: Dict[str, str] = {
     "MG": "Northeast", "SK": "Northeast", "NL": "Northeast", "TR": "Northeast",
 }
 
+# ── District-level overrides for Maharashtra sub-zones ───────────────────────
+# Marathwada: hot semi-arid plateau (avg +3°C vs coastal MH, 30% less rainfall)
+_MARATHWADA_DISTRICTS = {
+    "MH_LATUR", "MH_SOLAPUR", "MH_OSMANABAD", "MH_NANDED",
+    "MH_PARBHANI", "MH_HINGOLI", "MH_BEED", "MH_JALNA",
+    "MH_CHHATRAPATI_SAMBHAJINAGAR",  # Aurangabad
+}
+# Vidarbha: extreme heat zone (avg +4°C vs coastal MH, semi-arid)
+_VIDARBHA_DISTRICTS = {
+    "MH_NAGPUR", "MH_AMRAVATI", "MH_AKOLA", "MH_WASHIM",
+    "MH_YAVATMAL", "MH_WARDHA", "MH_CHANDRAPUR", "MH_GADCHIROLI",
+    "MH_GONDIA", "MH_BHANDARA", "MH_BULDHANA",
+}
+
 
 def get_zone_for_region(region_id: Optional[str]) -> str:
     """
     Derive the agro-climatic zone from a region_id like 'UP_LUCKNOW'.
+
+    For Maharashtra districts the function returns sub-zone identifiers:
+      - 'Marathwada'  for Latur, Solapur, Osmanabad, Nanded, etc.
+      - 'Vidarbha'    for Nagpur, Amravati, Akola, Wardha, etc.
+      - 'West'        for all other Maharashtra / Gujarat districts
+
     Defaults to 'North' if unknown.
     """
     if not region_id:
         return "North"
+    # Check Marathwada sub-zone first
+    if region_id in _MARATHWADA_DISTRICTS:
+        return "Marathwada"
+    # Check Vidarbha sub-zone
+    if region_id in _VIDARBHA_DISTRICTS:
+        return "Vidarbha"
     state_code = region_id.split("_")[0].upper()
     return _STATE_TO_ZONE.get(state_code, "North")
 
@@ -129,6 +155,27 @@ def get_monthly_climate(
     fallback = {"temperature": 28.0, "rainfall": 80.0, "humidity": 60.0}
     if not data:
         return fallback
+
+    # ── Sub-zone derivation for Marathwada / Vidarbha ────────────────────────
+    # These sub-zones are NOT in the historical CSV (which only has broad zones).
+    # We derive their climate from the "West" zone with calibrated offsets:
+    #   Marathwada : +3°C warmer, 30% drier, 8% lower humidity
+    #   Vidarbha   : +4°C warmer, 25% drier, 5% lower humidity
+    if zone == "Marathwada":
+        base = data.get("West", data.get("North", {})).get(month, fallback)
+        return {
+            "temperature": round(base["temperature"] + 3.0, 1),
+            "rainfall":    round(base["rainfall"] * 0.70, 1),
+            "humidity":    round(max(base["humidity"] - 8.0, 25.0), 1),
+        }
+    if zone == "Vidarbha":
+        base = data.get("West", data.get("North", {})).get(month, fallback)
+        return {
+            "temperature": round(base["temperature"] + 4.0, 1),
+            "rainfall":    round(base["rainfall"] * 0.75, 1),
+            "humidity":    round(max(base["humidity"] - 5.0, 28.0), 1),
+        }
+
     zone_data = data.get(zone, data.get("North", {}))
     return zone_data.get(month, fallback)
 

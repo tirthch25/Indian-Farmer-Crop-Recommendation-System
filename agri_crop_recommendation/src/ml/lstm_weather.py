@@ -141,8 +141,8 @@ class LSTMWeatherForecaster:
 
         self._num_features = X_all.shape[2]
         logger.info(
-            f"Training sequences: {len(X_all):,} × shape {X_all.shape} "
-            f"→ targets {y_all.shape}"
+            f"Training sequences: {len(X_all):,} x shape {X_all.shape} "
+            f"-> targets {y_all.shape}"
         )
 
         dev = torch.device(device)
