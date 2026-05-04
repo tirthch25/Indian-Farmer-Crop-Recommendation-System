@@ -9,9 +9,49 @@ for all major Indian agricultural regions.
 from typing import Dict, List, Optional
 from src.crops.models import CropInfo
 from src.crops.soil import SoilInfo, calculate_soil_compatibility_score, get_soil_amendment_suggestions
+import json
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# ── Regional Enrichment (Gemini-generated per-district crop suitability) ──────
+# Loaded once at startup from data/reference/regional_crops.json.
+# If the file doesn't exist yet (first run), the dict is empty and
+# the system falls back to the static zone-based scores as before.
+_REGIONAL_ENRICHMENT: Dict[str, Dict] = {}
+
+
+def _load_regional_enrichment() -> None:
+    """Load Gemini-generated per-district crop suitability from JSON file."""
+    global _REGIONAL_ENRICHMENT
+    # Look for the file relative to this module's location
+    base = Path(__file__).resolve().parent.parent.parent  # agri_crop_recommendation/
+    json_path = base / "data" / "reference" / "regional_crops.json"
+    if not json_path.exists():
+        logger.debug("regional_crops.json not found — using static zone-based scores")
+        return
+    try:
+        _REGIONAL_ENRICHMENT = json.loads(json_path.read_text(encoding="utf-8"))
+        logger.info(f"Loaded regional enrichment for {len(_REGIONAL_ENRICHMENT)} districts")
+    except Exception as e:
+        logger.warning(f"Failed to load regional_crops.json: {e}")
+
+
+# Load enrichment at module import time
+_load_regional_enrichment()
+
+
+def get_regional_enrichment(region_id: str) -> Optional[Dict]:
+    """
+    Return Gemini-generated enrichment data for a district, or None if not available.
+
+    Returns a dict with keys:
+        'approved'  -> {crop_id: suitability_score (0.50–1.00)}
+        'excluded'  -> [crop_id, ...]
+        'source'    -> 'gemini-2.0-flash'
+    """
+    return _REGIONAL_ENRICHMENT.get(region_id)
 
 
 # ── Zone → Region ID mapping (for nationwide suitability coverage) ──────────

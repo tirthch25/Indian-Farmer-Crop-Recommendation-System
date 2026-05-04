@@ -20,7 +20,7 @@ import pandas as pd
 import numpy as np
 import logging
 
-from src.crops.database import crop_db
+from src.crops.database import crop_db, get_regional_enrichment
 from src.crops.models import CropInfo
 from src.crops.soil import SoilInfo, calculate_soil_compatibility_score
 from src.utils.regions import RegionManager
@@ -44,17 +44,25 @@ _ml_model_cache = None
 def _get_regional_score(crop, region_id: str) -> float:
     """
     Look up regional suitability score for a crop.
-    Handles both new-style IDs (MH_PUNE) and legacy short IDs (PUNE).
-    Falls back to 0.50 (below-average) if region not found — penalizes
-    crops with no regional data rather than giving them a free pass.
+    Priority: (1) Gemini enrichment JSON → (2) static database → (3) 0.50 fallback.
     """
     if region_id is None:
         return 0.50
-    # Try full ID first
+    # 1. Check Gemini enrichment JSON first
+    enrichment = get_regional_enrichment(region_id)
+    if enrichment:
+        approved = enrichment.get("approved", {})
+        if crop.crop_id in approved:
+            return float(approved[crop.crop_id])
+        # Crop explicitly excluded — give low score
+        excluded = enrichment.get("excluded", [])
+        if crop.crop_id in excluded:
+            return 0.20
+    # 2. Try full ID in static database
     score = crop.regional_suitability.get(region_id)
     if score is not None:
         return score
-    # Try stripping state prefix (e.g. MH_PUNE -> PUNE)
+    # 3. Try stripping state prefix (e.g. MH_PUNE -> PUNE)
     parts = region_id.split('_', 1)
     if len(parts) == 2:
         short_key = parts[1]  # e.g. PUNE
@@ -159,18 +167,37 @@ def recommend_crops(
     season_crops = crop_db.get_crops_by_season(season)
     logger.info(f"Found {len(season_crops)} crops for {season} season")
     
-    # Filter by region if provided — skip if region has new-style ID with no crop-db match
+    # Filter by region if provided
+    # - If enrichment JSON has this region: use low threshold (0.20) — enrichment gate does real selection
+    # - Otherwise use 0.45 to reduce irrelevant crop pass-through
     if region_id:
-        # Raised threshold from 0.3 -> 0.45 to reduce irrelevant crop pass-through
+        _pre_enrichment = get_regional_enrichment(region_id)
+        _threshold = 0.20 if _pre_enrichment else 0.45
         season_crops = [c for c in season_crops
-                        if _get_regional_score(c, region_id) >= 0.45]
-        logger.info(f"Filtered to {len(season_crops)} crops suitable for {region_id}")
+                        if _get_regional_score(c, region_id) >= _threshold]
+        logger.info(f"Filtered to {len(season_crops)} crops suitable for {region_id} (threshold={_threshold})")
+
+    # ── Enrichment-based Regional Gate (fast, deterministic) ─────────────────
+    # If this district is already in regional_crops.json (Gemini enrichment),
+    # use that pre-computed approved list — no runtime LLM call needed.
+    _enrichment_used = False
+    if region_id:
+        enrichment = get_regional_enrichment(region_id)
+        if enrichment:
+            approved_ids_set = set(enrichment.get("approved", {}).keys())
+            if approved_ids_set:
+                before_count = len(season_crops)
+                season_crops = [c for c in season_crops if c.crop_id in approved_ids_set]
+                logger.info(
+                    f"Enrichment gate: {before_count} → {len(season_crops)} crops "
+                    f"for {region_id} (source: {enrichment.get('source', 'enrichment')})"
+                )
+                _enrichment_used = True
 
     # ── LLM Regional Gate (Hybrid Mode) ──────────────────────────────────────
-    # Ask Gemini which crops are ACTUALLY cultivated in this region.
-    # This solves the 552-region coverage gap in the static database.
+    # Only invoked for regions NOT yet in the enrichment JSON.
     # Falls back silently to the rule-based list if LLM is unavailable.
-    if region_id and _LLM_AVAILABLE and season_crops:
+    if region_id and _LLM_AVAILABLE and season_crops and not _enrichment_used:
         try:
             crop_ids_list   = [c.crop_id    for c in season_crops]
             crop_names_list = [c.common_name for c in season_crops]
@@ -205,7 +232,7 @@ def recommend_crops(
                 logger.info("LLM gate unavailable — using rule-based list")
         except Exception as e:
             logger.warning(f"LLM gate error (falling back): {e}")
-    # ── End LLM Gate ─────────────────────────────────────────────────────────
+    # ── End Gates ────────────────────────────────────────────────────────────
 
     # Filter by soil if provided
     if soil:

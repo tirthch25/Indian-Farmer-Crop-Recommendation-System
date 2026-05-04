@@ -93,13 +93,19 @@ def llm_filter_crops(
             f"{cid}={name}" for cid, name in zip(crop_ids, crop_names)
         )
 
-        # Short, token-efficient prompt
+        # Inclusive prompt — only reject crops that are CLIMATICALLY IMPOSSIBLE,
+        # not just uncommon. Short-duration vegetables and pulses are always acceptable.
         prompt = (
-            f"Indian agriculture expert. District: {region_name} ({state_code}). "
-            f"Zone info: {zone_hint}. Season: {season}.\n"
-            f"Crops: {crop_list_str}\n"
-            f"Which crops are actually grown here? Remove crops unsuitable for this zone.\n"
-            f"Reply ONLY JSON: {{\"ok\":[approved crop_ids],\"no\":[removed crop_ids]}}"
+            f"You are an Indian agriculture expert.\n"
+            f"District: {region_name} ({state_code}). Zone: {zone_hint}. Season: {season}.\n"
+            f"Crops to evaluate: {crop_list_str}\n\n"
+            f"Task: Identify crops that are CLIMATICALLY IMPOSSIBLE here "
+            f"(e.g. rice in arid desert, apple in tropics, cold-requiring crops in 40°C heat).\n"
+            f"Keep ALL crops that CAN be grown, including ones that are less common.\n"
+            f"Short-duration vegetables (okra, brinjal, gourd, tomato, spinach, methi) are "
+            f"acceptable in almost any Indian district with irrigation — keep them.\n"
+            f"Approve at least 70% of the crops unless there is a strong climatic reason to remove.\n"
+            f"Reply ONLY valid JSON: {{\"ok\":[approved crop_ids],\"no\":[removed crop_ids]}}"
         )
 
         response = client.models.generate_content(
@@ -119,6 +125,17 @@ def llm_filter_crops(
 
         valid_ids      = set(crop_ids)
         approved_valid = [c for c in approved if c in valid_ids]
+
+        # Safety net: if LLM is too aggressive (< 5 crops OR < 40% of input),
+        # treat the response as unreliable and fall back to rule-based list.
+        min_count = max(5, int(len(crop_ids) * 0.40))
+        if len(approved_valid) < min_count:
+            logger.warning(
+                f"LLM returned only {len(approved_valid)}/{len(crop_ids)} crops "
+                f"for {region_name} — below safety threshold ({min_count}). "
+                f"Falling back to rule-based list."
+            )
+            return None
 
         if not approved_valid:
             logger.warning("LLM returned empty list — falling back to all crops")
