@@ -322,18 +322,37 @@ def recommend(request: RegionRequest):
             except Exception as _llm_e:
                 pass  # Silently skip — explanations are bonus, not critical
         
-        # 9. Build month-wise forecast from historical zone data (Jan–Dec)
+        # 9. Build month-wise forecast (Jan-Dec) for the climate chart
+        #    Temperature: live API anchor for current month + zone seasonal shape offset
+        #    so each district shows its actual temperature range, not the zone average.
+        #    Humidity + rainfall remain zone-based (open-meteo free tier omits them).
         MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
         monthly_forecast = []
         try:
             from src.weather.history import get_zone_for_region, get_monthly_climate
-            zone = get_zone_for_region(region.region_id)
+            import datetime as _dt
+
+            zone          = get_zone_for_region(region.region_id)
+            current_month = _dt.datetime.now().month
+
+            # Live API 16-day mean temperature for this exact district (lat/lon accurate)
+            live_anchor = float(weather["temp_avg"].mean()) if "temp_avg" in weather.columns \
+                else float((weather["temp_max"].mean() + weather["temp_min"].mean()) / 2)
+
+            # Zone temps give the seasonal *shape* (warmer summer, cooler winter)
+            zone_temps  = {m: get_monthly_climate(zone, m)["temperature"] for m in range(1, 13)}
+            # Offset = how much this district's real temp differs from its zone average
+            temp_offset = live_anchor - zone_temps[current_month]
+
             for m in range(1, 13):
-                clim = get_monthly_climate(zone, m)
+                clim     = get_monthly_climate(zone, m)
+                # Apply same offset to every month -- preserves seasonal curve shape
+                # but anchors the whole curve to the district's actual temperature
+                adj_temp = round(zone_temps[m] + temp_offset, 1)
                 monthly_forecast.append({
                     "month":       MONTH_NAMES[m - 1],
                     "month_num":   m,
-                    "temperature": clim["temperature"],
+                    "temperature": adj_temp,
                     "rainfall":    clim["rainfall"],
                     "humidity":    clim["humidity"],
                 })

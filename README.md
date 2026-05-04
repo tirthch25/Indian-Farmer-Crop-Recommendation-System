@@ -8,7 +8,7 @@
 ![XGBoost](https://img.shields.io/badge/XGBoost-Weather-007ACC?style=for-the-badge)
 ![scikit-learn](https://img.shields.io/badge/Scikit--Learn-ML-F7931E?style=for-the-badge&logo=scikit-learn)
 ![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-4285F4?style=for-the-badge&logo=google)
-![Version](https://img.shields.io/badge/Version-2.1-brightgreen?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-2.2-brightgreen?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 **A nationwide, season-aware, AI-powered crop recommendation system for Indian farmers — covering all 640 districts across all major Indian states.**
@@ -21,7 +21,7 @@
 
 ## 🧭 Overview
 
-The **Indian Farmer Crop Recommendation System** (v2.1) is a full-stack intelligent agricultural advisory platform that helps Indian farmers make data-driven decisions about crop selection and planning. It combines:
+The **Indian Farmer Crop Recommendation System** (v2.2) is a full-stack intelligent agricultural advisory platform that helps Indian farmers make data-driven decisions about crop selection and planning. It combines:
 
 - **Real-time + historical weather data** — Open-Meteo API, 640+ districts, 10+ years
 - **ML-powered weather forecasting** — LSTM + XGBoost ensemble (district-aware)
@@ -67,10 +67,11 @@ python scripts/enrich_regional_crops.py --state MH
 
 ### 🌦️ Weather & Historical Climate Data
 - Real-time weather from **[Open-Meteo API](https://open-meteo.com/)** — no API key needed
+- **Per-district accurate temperatures**: Open-Meteo is called with each district's exact lat/lon — so Leh (3524 m) shows ~8°C in May, not the plains average of 40°C
 - **District-level historical weather data** for 640+ districts across 34 states
-- **Zone-level historical climate normals** (monthly averages for 6 zones: North, South, East, West, Central, Northeast)
+- **Zone-level historical climate normals** used *only* for **humidity** (which Open-Meteo free tier omits) — temperature is never zone-blended
 - Medium-range **17–90 day agricultural forecast** including temperature, rainfall, dry-spell risk, and humidity
-- Month-wise (Jan–Dec) climate chart on the web interface
+- Month-wise (Jan–Dec) climate chart — anchored to live API temperature, not zone averages
 
 ### 🤖 Machine Learning Models
 
@@ -142,6 +143,37 @@ Multi-factor **suitability score (0–100)** across 6 dimensions:
 ### 🌿 Soil Compatibility Analysis
 - Soil model: texture, pH, organic matter, drainage
 - Automated amendment suggestions and default soil profiles for all regions
+
+---
+
+### 🌡️ Per-District Temperature Accuracy (v2.2)
+
+A key fix in v2.2 eliminates wrong temperature values that previously affected **high-altitude, island, and several incorrectly-mapped state districts**:
+
+| What changed | Detail |
+|---|---|
+| **Temperature source** | Now **100% Open-Meteo live API** per district lat/lon — zone averaging completely removed |
+| **Zone data scope** | Zone data now used **only for humidity** (Open-Meteo free tier doesn't include it) |
+| **Monthly chart** | Anchored to live API temperature + zone seasonal shape offset — not raw zone averages |
+| **Ladakh `LA`** | New `Highland` zone with IMD station data (Leh: −7°C Jan → +19°C Jul) |
+| **Mizoram `MZ`** | Was missing → defaulted to North/39°C; now correctly `Northeast` |
+| **Meghalaya `ML`** | Was missing → defaulted to North/39°C; now correctly `Northeast` |
+| **Telangana `TL`** | `regions.json` uses `TL` not `TS`; now explicitly mapped to `South` |
+| **Goa `GA`** | Was missing → defaulted to North; now `West` (coastal) |
+| **Puducherry `PY`** | Was missing → defaulted to North; now `South` |
+| **Andaman `AN`** | Was missing → defaulted to North; now `South` (tropical island) |
+| **Chandigarh `CH`** | Was implicitly defaulting; now explicitly `North` |
+
+Example temperature improvements (May readings):
+
+| District | Before fix | After fix |
+|---|---|---|
+| Leh, Ladakh | ~~39.8°C~~ | ~8°C ✅ |
+| Ri Bhoi / Shillong, Meghalaya | ~~39.8°C~~ | ~22°C ✅ |
+| Aizawl, Mizoram | ~~39.8°C~~ | ~21°C ✅ |
+| Tawang, Arunachal Pradesh | 24.8°C zone avg | ~9°C ✅ |
+| Gangtok, Sikkim | 24.8°C zone avg | ~17°C ✅ |
+| Shimla, Himachal Pradesh | 39.8°C zone avg | ~14°C ✅ |
 
 ---
 

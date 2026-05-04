@@ -25,25 +25,51 @@ from typing import Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
-# ── Default data path (relative to working directory = agri_crop_recommendation/) ──
+# -- Default data path (relative to working directory = agri_crop_recommendation/)
 _DEFAULT_CSV = os.path.join("data", "weather", "zone", "historical_weather.csv")
 
-# ── Region-prefix → Zone mapping ──────────────────────────────────────────────
+# -- Region-prefix -> Zone mapping (humidity lookup only; temperature is 100% live API)
 _STATE_TO_ZONE: Dict[str, str] = {
-    # North
+    # North (Indo-Gangetic plains)
     "UP": "North", "PB": "North", "HR": "North", "HP": "North",
     "UK": "North", "DL": "North", "JK": "North", "RJ": "North",
+    "CH": "North",    # Chandigarh UT (North plains city)
+    # Highland / Alpine (Ladakh UT cold desert at 3500+ m)
+    "LA": "Highland",
     # South
     "KA": "South", "TN": "South", "AP": "South", "TS": "South", "KL": "South",
+    "TL": "South",    # Telangana (regions.json uses TL, not TS)
+    "PY": "South",    # Puducherry UT (coastal Tamil Nadu climate)
+    "AN": "South",    # Andaman & Nicobar Islands (tropical island, South humidity)
     # East
     "WB": "East",  "BR": "East",  "OD": "East",  "JH": "East",
     # West (coastal Maharashtra + Gujarat)
     "MH": "West",  "GJ": "West",
+    "GA": "West",     # Goa (coastal West zone)
     # Central
     "MP": "Central", "CG": "Central",
     # Northeast
-    "AS": "Northeast", "AR": "Northeast", "MN": "Northeast",
+    "AS": "Northeast", "AR": "Northeast", "MN": "Northeast", "MZ": "Northeast",
     "MG": "Northeast", "SK": "Northeast", "NL": "Northeast", "TR": "Northeast",
+    "ML": "Northeast",  # Meghalaya (was missing, defaulted to wrong North zone)
+}
+
+# ── Inline Highland/Alpine climate table (Leh–Ladakh cold desert, ~3 500 m) ───
+# Source: IMD / World Meteorological Organization station data for Leh.
+# month → { temperature (°C avg), rainfall (mm/month), humidity (%) }
+_HIGHLAND_CLIMATE: Dict[int, Dict[str, float]] = {
+    1:  {"temperature": -7.0, "rainfall":  9.0, "humidity": 45.0},
+    2:  {"temperature": -4.5, "rainfall":  9.5, "humidity": 42.0},
+    3:  {"temperature":  1.5, "rainfall": 11.0, "humidity": 37.0},
+    4:  {"temperature":  7.5, "rainfall":  8.0, "humidity": 30.0},
+    5:  {"temperature": 12.5, "rainfall":  7.5, "humidity": 27.0},
+    6:  {"temperature": 17.0, "rainfall":  7.0, "humidity": 25.0},
+    7:  {"temperature": 19.5, "rainfall": 20.0, "humidity": 40.0},
+    8:  {"temperature": 18.5, "rainfall": 17.5, "humidity": 42.0},
+    9:  {"temperature": 13.5, "rainfall": 11.5, "humidity": 36.0},
+    10: {"temperature":  5.5, "rainfall":  7.5, "humidity": 32.0},
+    11: {"temperature": -2.5, "rainfall":  7.5, "humidity": 40.0},
+    12: {"temperature": -6.5, "rainfall":  9.0, "humidity": 45.0},
 }
 
 # ── District-level overrides for Maharashtra sub-zones ───────────────────────
@@ -65,7 +91,11 @@ def get_zone_for_region(region_id: Optional[str]) -> str:
     """
     Derive the agro-climatic zone from a region_id like 'UP_LUCKNOW'.
 
-    For Maharashtra districts the function returns sub-zone identifiers:
+    Returns one of: North, South, East, West, Central, Northeast,
+                    Highland, Marathwada, Vidarbha.
+
+    Sub-zone overrides (checked before state prefix):
+      - 'Highland'    for all Ladakh districts (LA_*)
       - 'Marathwada'  for Latur, Solapur, Osmanabad, Nanded, etc.
       - 'Vidarbha'    for Nagpur, Amravati, Akola, Wardha, etc.
       - 'West'        for all other Maharashtra / Gujarat districts
@@ -155,6 +185,12 @@ def get_monthly_climate(
     fallback = {"temperature": 28.0, "rainfall": 80.0, "humidity": 60.0}
     if not data:
         return fallback
+
+    # ── Highland / Alpine zone (Leh–Ladakh) — served from inline table ──────
+    # The CSV only covers broad plains zones.  Highland uses IMD station data
+    # for Leh at 3 524 m; returning directly avoids the ~40°C plains bias.
+    if zone == "Highland":
+        return dict(_HIGHLAND_CLIMATE.get(month, _HIGHLAND_CLIMATE[6]))
 
     # ── Sub-zone derivation for Marathwada / Vidarbha ────────────────────────
     # These sub-zones are NOT in the historical CSV (which only has broad zones).

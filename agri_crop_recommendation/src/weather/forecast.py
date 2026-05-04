@@ -133,76 +133,85 @@ def _load_xgboost_model():
 
 def _climatology_forecast(weather_df: pd.DataFrame, planning_days: int, region_id: str = None) -> Dict:
     """
-    Climatology-based forecast (fallback when no ML models).
+    Live-API-first forecast (fallback when no ML models).
 
-    Uses IMD-reference historical zone averages from data/weather/zone/historical_weather.csv
-    when available; falls back to the original API-extrapolation approach if not.
+    Temperature: 100% from Open-Meteo live API using the district's exact lat/lon.
+      Zone averages are NOT blended in -- they produce wrong values for high-altitude
+      districts (Leh, Tawang, Gangtok) and any district that differs from its zone mean.
+
+    Humidity:  from historical zone data (Open-Meteo free tier omits it).
+    Rainfall:  from live API, zone seasonal total used only as a sanity-check floor.
     """
-    current_month = datetime.now().month
+    current_month = datetime.now().month  # noqa: F841
 
-    # ── Try to use historical zone data ──────────────────────────────────────
-    hist_temp = None
-    hist_rain = None
+    # ── Humidity from zone data (only field not in the free API) ─────────────
     hist_hum  = None
+    hist_rain = None
     try:
-        from src.weather.history import get_zone_for_region, get_monthly_climate, get_seasonal_climate
+        from src.weather.history import get_zone_for_region, get_seasonal_climate
         from src.utils.seasons import detect_season
-
-        zone = get_zone_for_region(region_id)
-
-        # Determine season from current month
         from datetime import datetime as _dt
-        season = detect_season(_dt.now(), region_id)
 
-        # Get full seasonal aggregate (total rainfall, avg temp, avg humidity)
-        seas = get_seasonal_climate(zone, season)
-        hist_rain = seas["total_rainfall_mm"]
-        hist_temp = seas["avg_temperature"]
+        zone   = get_zone_for_region(region_id)
+        season = detect_season(_dt.now(), region_id)
+        seas   = get_seasonal_climate(zone, season)
         hist_hum  = seas["avg_humidity"]
 
-        # Scale rainfall if planning period differs from season length
+        # Seasonal rainfall total -- used only for rainfall floor, never temperature
+        hist_rain = seas["total_rainfall_mm"]
         season_lengths = {"Kharif": 153, "Rabi": 151, "Zaid": 61}
-        season_days = season_lengths.get(season, 120)
+        season_days    = season_lengths.get(season, 120)
         if planning_days != season_days:
             hist_rain = round(hist_rain * (planning_days / season_days), 1)
 
         logger.info(
-            f"Historical forecast for zone={zone} season={season}: "
-            f"temp={hist_temp}°C rain={hist_rain}mm hum={hist_hum}%"
+            f"Zone={zone} season={season}: hum={hist_hum}%  "
+            f"(temperature is 100%% live API -- zone temp NOT blended)"
         )
     except Exception as e:
-        logger.debug(f"Historical weather data not available: {e}")
+        logger.debug(f"Zone humidity lookup failed: {e}")
 
-    # ── Short-term signals (Days 1–16 from API) — these are REAL per-district temps
-    avg_temp_api    = float(weather_df["temp_avg"].mean())
+    # ── Live API signals -- these ARE the district's real temperatures ────────
+    avg_temp_api     = float(weather_df["temp_avg"].mean())
     avg_temp_max_api = float(weather_df["temp_max"].mean())
     avg_temp_min_api = float(weather_df["temp_min"].mean())
-    avg_daily_rain  = float(weather_df["rainfall"].mean())
-    dry_spell_risk  = int(weather_df["dry_spell_days"].max())
+    avg_daily_rain   = float(weather_df["rainfall"].mean())
+    dry_spell_risk   = int(weather_df["dry_spell_days"].max())
 
     if avg_daily_rain < 0.5:
         avg_daily_rain = 1.5  # conservative climatological floor
 
-    # ── Blend: 70% live API (district-specific) + 30% historical baseline ─────
-    # Prioritising live data ensures each district shows its real temperature,
-    # not the zone average shared by all cities in the same state.
-    if hist_temp is not None:
-        expected_temp = round(0.70 * avg_temp_api + 0.30 * hist_temp, 1)
-        expected_rain = round(0.70 * (avg_daily_rain * planning_days) + 0.30 * hist_rain, 1)
-        expected_hum  = hist_hum
-        forecast_source = "live_blend"
-        confidence = "medium"
+    # ── Temperature: 100% live API, no zone blending ─────────────────────────
+    # Open-Meteo is called with each district's actual lat/lon, so the returned
+    # temperature already accounts for altitude, coastal proximity, etc.
+    # Blending in zone averages introduces error for any district that diverges
+    # from its zone mean (Leh, Tawang, Gangtok, coastal vs inland MH, ...).
+    temp_trend    = (
+        weather_df["temp_avg"].iloc[-5:].mean() - weather_df["temp_avg"].iloc[:5].mean()
+    )
+    temp_adjust   = 1.0 if temp_trend > 0 else (-1.0 if temp_trend < 0 else 0.0)
+    expected_temp = round(avg_temp_api + temp_adjust, 1)
+
+    # ── Rainfall: live API extrapolated; zone total as floor only ─────────────
+    live_rain_proj = round(avg_daily_rain * planning_days, 1)
+    if hist_rain is not None and live_rain_proj < 0.5:
+        # API shows near-zero during a clearly wet season -- use zone floor
+        expected_rain = hist_rain
     else:
-        # Pure API extrapolation (original fallback)
-        temp_trend = (
-            weather_df["temp_avg"].iloc[-5:].mean() - weather_df["temp_avg"].iloc[:5].mean()
+        expected_rain = live_rain_proj
+
+    # ── Humidity: only zone-sourced field (not in Open-Meteo free tier) ───────
+    if hist_hum is not None:
+        expected_hum    = hist_hum
+        forecast_source = "live_api"
+        confidence      = "high"
+    else:
+        expected_hum = (
+            float(weather_df["humidity"].mean())
+            if "humidity" in weather_df.columns else 65.0
         )
-        temp_adjustment = 1.0 if temp_trend > 0 else (-1.0 if temp_trend < 0 else 0)
-        expected_temp = round(avg_temp_api + temp_adjustment, 2)
-        expected_rain = round(avg_daily_rain * planning_days, 1)
-        expected_hum  = float(weather_df.get("humidity", pd.Series([65.0])).mean()) if "humidity" in weather_df.columns else 65.0
-        forecast_source = "climatology"
-        confidence = "low"
+        forecast_source = "live_api"
+        confidence      = "medium"
 
     # Build daily predictions from live weather_df (Days 1-16, actual API data)
     daily_predictions = []
